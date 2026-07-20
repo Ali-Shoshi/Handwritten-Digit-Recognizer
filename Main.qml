@@ -1,7 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
-
+import QtQuick.Controls
+import Qt.labs.qmlmodels
 
 ApplicationWindow {
     id: window
@@ -10,81 +11,565 @@ ApplicationWindow {
     minimumWidth: 200
     minimumHeight: 250
     visible: true
-    title: qsTr("Hello World")
-    property bool lightMode: Application.styleHints.colorScheme === Qt.Light
-    property color reallyDark: "#1f1f1f"
-    property color dark: "#262626"
-    property color reallyLight: "#e7e7e7"
-    property color light: "#e0e0e0"
+    title: qsTr("Handwritten Digit Recognizer")
+    visibility: Window.Maximized
+    readonly property real scaleFactor: Math.min(window.width / 1024, window.height / 768)
 
-    GridLayout {
-        id: grid
-        columns: width < 400 ? 1 : 2
-        rowSpacing: 0
-        columnSpacing: 0
+    Rectangle {
+        id: rectangle
         anchors.fill: parent
+        color: "#1f1f1f"
 
         Rectangle {
             id: rectangle1
-            color: window.lightMode ? window.reallyLight : window.reallyDark
-            Layout.fillHeight: true
-            Layout.fillWidth: true
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.margins: 10
+            height: 50
+            color: "#ffffff"
+            radius: 10
+            border.width: 5
 
-            ColumnLayout {
-                anchors.fill: parent
-                Layout.alignment: Qt.AlignHCenter | Qt.AlignTop
-
-                Label {
-                    id: text1
-                    color: window.lightMode ? window.dark : window.light
-                    font.pixelSize: 120
-                    fontSizeMode: Text.Fit
-                    text: qsTr("Hello World")
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    Layout.margins: 16
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
+            Text {
+                id: text4
+                anchors.centerIn: parent
+                text: qsTr("Handwritten Digit Recognizer - Made By A.Sh")
+                font.pixelSize: 26
+                font.bold: true
             }
         }
 
-        Rectangle {
-            id: rectangle2
-            color: window.lightMode ? window.light : window.dark
-            Layout.fillHeight: true
-            Layout.fillWidth: true
+        GridLayout {
+            id: grid
+            anchors.top: rectangle1.bottom
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.margins: 10
+            anchors.topMargin: 10
+            anchors.bottomMargin: 20
 
-            ColumnLayout {
-                anchors.fill: parent
-                Layout.alignment: Qt.AlignHCenter | Qt.AlignTop
+            rows: 2
+            columns: 2
+
+            // --- ROW 1, COL 1 (Fixed Size) ---
+            Rectangle {
+                id: rectangle2
+                Layout.preferredWidth: 420 * scaleFactor
+                Layout.preferredHeight: 450 * scaleFactor
+                color: "#5a5a5a"
+                radius: 10
+
+                Canvas {
+                    id: drawingCanvas
+                    anchors.top: parent.top
+                    anchors.topMargin: 40
+                    anchors.left: parent.left
+                    anchors.leftMargin: 10
+                    anchors.right: parent.right
+                    anchors.rightMargin: 10
+                    width: 400 * scaleFactor
+                    height: 400 * scaleFactor
+
+
+                    // Arrays to hold our drawing strokes
+                    property var paths: []
+                    property var currentPath: []
+
+                    // Function to clear the canvas
+                    function clear() {
+                        paths = []
+                        currentPath = []
+                        requestPaint()
+                    }
+
+                    onPaint: {
+                        var ctx = getContext("2d")
+
+                        // 1. Clear and fill background
+                        ctx.fillStyle = "black"
+                        ctx.fillRect(0, 0, width, height)
+
+                        // 2. Setup brush
+                        ctx.strokeStyle = "white"
+                        ctx.lineWidth = 20 * scaleFactor
+                        ctx.lineCap = "round"
+                        ctx.lineJoin = "round"
+
+                        // 3. Draw previously finished strokes
+                        for (var i = 0; i < paths.length; i++) {
+                            var p = paths[i]
+                            if (p.length < 2) continue
+                            ctx.beginPath()
+                            ctx.moveTo(p[0].x, p[0].y)
+                            for (var j = 1; j < p.length; j++) {
+                                ctx.lineTo(p[j].x, p[j].y)
+                            }
+                            ctx.stroke()
+                        }
+
+                        // 4. Draw the stroke currently being drawn
+                        if (currentPath.length >= 2) {
+                            ctx.beginPath()
+                            ctx.moveTo(currentPath[0].x, currentPath[0].y)
+                            for (var k = 1; k < currentPath.length; k++) {
+                                ctx.lineTo(currentPath[k].x, currentPath[k].y)
+                            }
+                            ctx.stroke()
+                        }
+                    }
+
+                    MouseArea {
+                        id: mouseArea
+                        anchors.fill: parent
+
+                        onPressed: (mouse) => {
+                            // Start a new path array when mouse is clicked
+                            drawingCanvas.currentPath = [{x: mouse.x, y: mouse.y}]
+                        }
+
+                        onPositionChanged: (mouse) => {
+                            if (pressed) {
+                                // Add points to the path and tell the canvas to redraw
+                                drawingCanvas.currentPath.push({x: mouse.x, y: mouse.y})
+                                drawingCanvas.requestPaint()
+                            }
+                        }
+
+                        onReleased: (mouse) => {
+                            // Save the finished path into the main paths array
+                            drawingCanvas.paths.push(drawingCanvas.currentPath)
+                            drawingCanvas.currentPath = []
+                        }
+                    }
+                }
+
+                Rectangle {
+                    id: rectangle7
+                    x: 10
+                    y: 10
+                    width: 400 * scaleFactor
+                    height: 30
+                    color: "#2d2d2d"
+                    anchors.top: parent.top
+                    anchors.topMargin: 10
+                    anchors.left: parent.left
+                    anchors.leftMargin: 10
+                    anchors.right: parent.right
+                    anchors.rightMargin: 10
+                    Text {
+                        id: text1
+                        anchors.centerIn: parent
+                        color: "#ffffff"
+                        text: "Write a Number"
+                        font.pixelSize: 20
+                        font.bold: true
+                    }
+                }
+            }
+
+            // --- ROW 1, COL 2 (Fills Width, Height matches Row 1) ---
+            Rectangle {
+                id: result
+                Layout.fillWidth: true
+                Layout.preferredHeight: 450 * scaleFactor
+                color: "#5a5a5a"
+                radius: 10
+
+                Rectangle {
+
+                    anchors.top: parent.top
+                    anchors.topMargin: 10
+                    anchors.left: parent.left
+                    anchors.leftMargin: 10
+                    anchors.right: parent.right
+                    anchors.rightMargin: 10
+
+                    height: 30
+                    color: "#2d2d2d"
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Results"
+                        color: "white"
+                        font.pixelSize:20
+                        font.bold: true
+
+                    }
+                }
+                Rectangle {
+                    id: bestResult
+                    x: 10* scaleFactor
+                    y: 40
+                    width: 300* scaleFactor
+                    height: 300* scaleFactor
+                    color: "#d9d9d9"
+                    radius: 0
+                    Text{
+                        id: bestResultValue
+                        anchors.verticalCenterOffset: -30   * scaleFactor
+                        anchors.centerIn: parent
+                        text:"2"
+                        color:"black"
+                        font.pixelSize:270 * scaleFactor
+                        font.bold: true
+                    }
+                    Rectangle {
+                        id: bestResultProbabilityBox
+                        height:35
+                        anchors.left: parent.left
+                        anchors.leftMargin: 0
+                        anchors.right: parent.right
+                        anchors.rightMargin: 0
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: 0
+                        color: "#080707"
+                        radius: 0
+                        Text{
+                            id: bestResultProbability
+                            anchors.centerIn: parent
+                            text:"2"
+                            color:"white"
+                            font.pixelSize:15 * scaleFactor
+                            font.bold: true
+                        }
+
+                    }
+
+                }
+
+                Rectangle {
+                    id: secondBestResult
+                    x: 350* scaleFactor
+                    y: 40
+                    width: 250* scaleFactor
+                    height: 250* scaleFactor
+                    color: "#d9d9d9"
+                    radius: 0
+                    Text{
+                        id: secondBestResultValue
+                        anchors.verticalCenterOffset: -30* scaleFactor
+                        anchors.centerIn: parent
+                        text:"2"
+                        color:"black"
+                        font.pixelSize:200 * scaleFactor
+                        font.bold: true
+                    }
+                    Rectangle {
+                        id: secondBestResultProbabilityBox
+                        height:35
+                        anchors.left: parent.left
+                        anchors.leftMargin: 0
+                        anchors.right: parent.right
+                        anchors.rightMargin: 0
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: 0
+                        color: "#080707"
+                        radius: 0
+                        Text{
+                            id: secondBestResultProbability
+                            anchors.centerIn: parent
+                            text:"2"
+                            color:"white"
+                            font.pixelSize:15 * scaleFactor
+                            font.bold: true
+                        }
+
+                    }
+
+                }
+
+                Rectangle {
+                    id: thirdBestResult
+                    x: 640 * scaleFactor
+                    y: 40
+                    width: 200* scaleFactor
+                    height: 200* scaleFactor
+                    color: "#d9d9d9"
+                    radius: 0
+                    Text{
+                        id: thirdBestResultValue
+                        anchors.verticalCenterOffset: -30* scaleFactor
+                        anchors.centerIn: parent
+                        text:"2"
+                        color:"black"
+                        font.pixelSize:150 * scaleFactor
+                        font.bold: true
+                    }
+                    Rectangle {
+                        id: thirdBestResultProbabilityBox
+                        height:35
+                        anchors.left: parent.left
+                        anchors.leftMargin: 0
+                        anchors.right: parent.right
+                        anchors.rightMargin: 0
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: 0
+                        color: "#080707"
+                        radius: 0
+                        Text{
+                            id: thirdBestResultProbability
+                            anchors.centerIn: parent
+                            text:"2"
+                            color:"white"
+                            font.pixelSize:15 * scaleFactor
+                            font.bold: true
+                        }
+
+                    }
+
+                }
+                TableView {
+                    // Positioning as you requested
+                    anchors.left: parent.left
+                    anchors.leftMargin: 10
+                    anchors.right: parent.right
+                    anchors.rightMargin: 10
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 3
+
+
+                    // Fixed dimensions to fit your rows/columns
+                    width: 1000
+                    height: 70
+
+                    columnSpacing: 1
+                    rowSpacing: 1
+                    clip: true
+
+                    model: TableModel {
+                        // Define 11 columns: one for the Label, 10 for the digits 0-9
+                        TableModelColumn { display: "label"; }
+                        TableModelColumn { display: "v0" }
+                        TableModelColumn { display: "v1" }
+                        TableModelColumn { display: "v2" }
+                        TableModelColumn { display: "v3" }
+                        TableModelColumn { display: "v4" }
+                        TableModelColumn { display: "v5" }
+                        TableModelColumn { display: "v6" }
+                        TableModelColumn { display: "v7" }
+                        TableModelColumn { display: "v8" }
+                        TableModelColumn { display: "v9" }
+
+                        rows: [
+                            { "label": "NUMBERS", "v0": 0, "v1": 1, "v2": 2, "v3": 3, "v4": 4, "v5": 5, "v6": 6, "v7": 7, "v8": 8, "v9": 9 },
+                            { "label": "PROBABILITY", "v0": "0%", "v1": "0%", "v2": "0%", "v3": "0%", "v4": "0%", "v5": "0%", "v6": "0%", "v7": "0%", "v8": "0%", "v9": "0%" }
+                        ]
+                    }
+
+                    delegate: Rectangle {
+                        implicitWidth: 80 // Adjust width so it fits in your layout
+                        implicitHeight: 30
+                        color: "#333333"
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: display
+                            color: "white"
+                            font.pixelSize: 12
+                        }
+                    }
+                }
+                Rectangle{
+                    anchors.top: parent.top
+                    anchors.topMargin: 40
+                    anchors.right: parent.right
+                    anchors.rightMargin: 10
+                    anchors.left: parent.left
+                    anchors.leftMargin: 900* scaleFactor
+
+                    color: "#333333"
+                    height:100* scaleFactor
+
+
+                    ColumnLayout {
+                            // Anchor the column inside the parent with some spacing/margins
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            spacing: 10 // Space between each text element
+                            layoutDirection: Qt.LeftToRight
+                            Text {
+                                text: "Model Evaluation"
+                                color: "white"
+                                font.pixelSize: 15
+                                font.bold: true
+                                Layout.alignment: Qt.AlignHCenter // Centers this specific line
+                            }
+
+                            Text {
+                                text: "Correct : 96%"
+                                color: "white"
+                                font.pixelSize: 15
+                                font.bold: true
+                                Layout.alignment: Qt.AlignHCenter // Centers this specific line
+                            }
+
+                            Text {
+                                text: "70000/80000"
+                                color: "white"
+                                font.pixelSize: 15
+                                font.bold: true
+                                Layout.alignment: Qt.AlignHCenter // Centers this specific line
+                            }
+                        }
+                }
+            }
+
+            // --- ROW 2, COL 1 (Fixed Width, Fills Remaining Height) ---
+            Rectangle {
+                id: rectangle4
+                Layout.preferredWidth: 420 * scaleFactor
+                Layout.fillHeight: true
+                color: "#5a5a5a"
+                radius: 10
 
                 Button {
-                    id: button1
-                    text: window.lightMode ? qsTr("\u263D  Dark mode")
-                                           : qsTr("\u263C  Light mode")
-                    Layout.bottomMargin: 16
-                    Layout.alignment: Qt.AlignHCenter | Qt.AlignBottom
+                    id: recognizeButton
+                    text: "Recognize Number"
+                    anchors.top: parent.top
+                    anchors.topMargin: 10 * scaleFactor
+                    anchors.left: parent.left
+                    anchors.leftMargin: 5
+                    anchors.right: parent.right
+                    anchors.rightMargin: 5
 
-                    contentItem: Text {
-                        text: button1.text
-                        color: window.lightMode ? window.light : window.dark
-                        font: button1.font
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
+                    height: 35* scaleFactor
+                    font.bold: true
+                    font.pixelSize: 18
+                    palette.buttonText: "white" // This sets the text color
 
                     background: Rectangle {
-                        implicitWidth: 120
-                        implicitHeight: 36
-                        radius: 8
-                        color: window.lightMode ? window.dark : window.light
+                        radius: 5
+                        color: recognizeButton.pressed ? "#03a306" :
+                            (recognizeButton.hovered ? "#027d04" : "#03a306")
+                        Behavior on color { ColorAnimation { duration: 100 } }
                     }
+                }
+                Button {
+                    id: clearButton
+                    text: "Clear Number"
+                    anchors.top: parent.top
+                    anchors.topMargin: 50 * scaleFactor
+                    anchors.left: parent.left
+                    anchors.leftMargin: 5
+                    anchors.right: parent.right
+                    anchors.rightMargin: 5
+                    height: 35 * scaleFactor
+                    font.bold: true
+                    font.pixelSize: 18
+                    palette.buttonText: "white" // This sets the text color
+                    onClicked: drawingCanvas.clear() // Hooked up the clear function!
 
-                    onClicked: window.lightMode = !window.lightMode
+                    background: Rectangle {
+                        radius: 5
+                        color: clearButton.pressed ? "#db0909" :
+                            (clearButton.hovered ? "darkred" : "#db0909")
+                        Behavior on color { ColorAnimation { duration: 100 } }
+                    }
+                }
+                Button {
+                    id: trainModelButton
+                    text: "Train Model"
+                    anchors.top: parent.top
+                    anchors.topMargin: 92 * scaleFactor
+                    anchors.left: parent.left
+                    anchors.leftMargin: 5
+
+                    width: 200 * scaleFactor
+                    height: 64 * scaleFactor
+                    font.bold: true
+                    font.pixelSize: 18
+                    palette.buttonText: "white" // This sets the text color
+
+                    background: Rectangle {
+                        radius: 5
+                        color: trainModelButton.pressed ? "#3b3b3b" :
+                            (trainModelButton.hovered ? "#000000" : "#242424")
+                        Behavior on color { ColorAnimation { duration: 100 } }
+                    }
+                }
+                Button {
+                    id: resetModelButton
+                    text: "Reset Model"
+                    anchors.top: parent.top
+                    anchors.topMargin: 160 * scaleFactor
+                    anchors.left: parent.left
+                    anchors.leftMargin: 5
+
+                    width: 200 * scaleFactor
+                    height: 64 * scaleFactor
+                    font.bold: true
+                    font.pixelSize: 18
+                    palette.buttonText: "white" // This sets the text color
+                    background: Rectangle {
+                        radius: 5
+                        color: resetModelButton.pressed ? "#3b3b3b" :
+                            (resetModelButton.hovered ? "#000000" : "#242424")
+                        Behavior on color { ColorAnimation { duration: 100 } }
+                    }
+                }
+                Button {
+                    id: evaluateButton
+                    text: "Evaluate Model"
+                    anchors.top: parent.top
+                    anchors.topMargin: 92 * scaleFactor
+                    anchors.right: parent.right
+                    anchors.rightMargin: 5
+                    width: 200 * scaleFactor
+                    height: 64* scaleFactor
+                    font.bold: true
+                    font.pixelSize: 18
+                    palette.buttonText: "white" // This sets the text color
+                    background: Rectangle {
+                        radius: 5
+                        color: evaluateButton.pressed ? "#3b3b3b" :
+                            (evaluateButton.hovered ? "#000000" : "#242424")
+                        Behavior on color { ColorAnimation { duration: 100 } }
+                    }
+                }
+                Button {
+                    id: myButton6
+                    text: "Click Me"
+                    anchors.top: parent.top
+                    anchors.topMargin: 160 * scaleFactor
+                    anchors.right: parent.right
+                    anchors.rightMargin: 5
+                    width: 200 * scaleFactor
+                    height: 64* scaleFactor
+                    font.bold: true
+                    font.pixelSize: 18
+                    palette.buttonText: "white" // This sets the text color
+                    background: Rectangle {
+                        radius: 5
+                        color: myButton6.pressed ? "#3b3b3b" :
+                            (myButton6.hovered ? "#000000" : "#242424")
+                        Behavior on color { ColorAnimation { duration: 100 } }
+                    }
+                }
+            }
+
+            // --- ROW 2, COL 2 (Fills Remaining Width AND Height) ---
+            Rectangle {
+                id: rectangle3
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                color: "#5a5a5a"
+                radius: 10
+
+                Text {
+                    id: text2
+                    x: 18
+                    y: 16
+                    width: 1280
+                    height: 311
+                    color: "#ffffff"
+                    text: "Explain the buttons"
+                    font.pixelSize: 12
+                    minimumPointSize: 16
+                    minimumPixelSize: 17
                 }
             }
         }
     }
-
 }
