@@ -21,6 +21,11 @@ qt_add_qml_module(appHandwrittenDigitRecognizer
     URI HandwrittenDigitRecognizer
     QML_FILES
         Main.qml
+        SOURCES appmanager.h appmanager.cpp
+        SOURCES
+        SOURCES
+        SOURCES datasetloader.h datasetloader.cpp
+        SOURCES neuralnetwork.h neuralnetwork.cpp
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
