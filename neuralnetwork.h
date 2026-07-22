@@ -8,26 +8,26 @@ class NeuralNetwork
 {
 private:
     int epochs=10;
-    double alpha=0.01;
+    float alpha=0.01;
     std::vector<std::vector<float>> images;
     std::vector<int> labels;
 
-    std::vector<double>inputNeuron{std::vector<double>(784)};
-    std::vector<double>hidden1Neuron{std::vector<double>(128)};
-    std::vector<double>hidden2Neuron{std::vector<double>(64)};
-    std::vector<double>outputNeuron{std::vector<double>(10)};
+    std::vector<float>inputNeuron{std::vector<float>(784)};
+    std::vector<float>hidden1Neuron{std::vector<float>(128)};
+    std::vector<float>hidden2Neuron{std::vector<float>(64)};
+    std::vector<float>outputNeuron{std::vector<float>(10)};
 
-    std::vector<std::vector<double>> WIH{784 , std::vector<double>(128)};
-    std::vector<std::vector<double>> WHH{128 , std::vector<double>(64)};
-    std::vector<std::vector<double>> WHO{64 , std::vector<double>(10)};
+    std::vector<std::vector<float>> WIH{784 , std::vector<float>(128)};
+    std::vector<std::vector<float>> WHH{128 , std::vector<float>(64)};
+    std::vector<std::vector<float>> WHO{64 , std::vector<float>(10)};
 
-    std::vector<double> biasHidden1{std::vector<double>(128)};
-    std::vector<double> biasHidden2{std::vector<double>(64)};
-    std::vector<double> biasOutput{std::vector<double>(10)};
+    std::vector<float> biasHidden1{std::vector<float>(128)};
+    std::vector<float> biasHidden2{std::vector<float>(64)};
+    std::vector<float> biasOutput{std::vector<float>(10)};
 
-    double randomNumber(int inputSize);
+    float randomNumber(int inputSize);
     void getRandomWeight();
-    double ReLU(double x);
+    float ReLU(float x);
     void train();
 public:
     NeuralNetwork();
