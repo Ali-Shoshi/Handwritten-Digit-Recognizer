@@ -1,13 +1,17 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <NeuralNetwork.h>
-#include <iostream>
+#include <QQmlContext>
+#include "AppManager.h"
 
 int main(int argc, char *argv[])
 {
      QGuiApplication app(argc, argv);
-
      QQmlApplicationEngine engine;
+
+     AppManager appManager;
+    engine.rootContext()->setContextProperty("appManager", &appManager);
+
      QObject::connect(
          &engine,
          &QQmlApplicationEngine::objectCreationFailed,

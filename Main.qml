@@ -73,11 +73,9 @@ ApplicationWindow {
                     height: 400 * scaleFactor
 
 
-                    // Arrays to hold our drawing strokes
                     property var paths: []
                     property var currentPath: []
 
-                    // Function to clear the canvas
                     function clear() {
                         paths = []
                         currentPath = []
@@ -87,17 +85,14 @@ ApplicationWindow {
                     onPaint: {
                         var ctx = getContext("2d")
 
-                        // 1. Clear and fill background
                         ctx.fillStyle = "black"
                         ctx.fillRect(0, 0, width, height)
 
-                        // 2. Setup brush
                         ctx.strokeStyle = "white"
                         ctx.lineWidth = 20 * scaleFactor
                         ctx.lineCap = "round"
                         ctx.lineJoin = "round"
 
-                        // 3. Draw previously finished strokes
                         for (var i = 0; i < paths.length; i++) {
                             var p = paths[i]
                             if (p.length < 2) continue
@@ -109,7 +104,6 @@ ApplicationWindow {
                             ctx.stroke()
                         }
 
-                        // 4. Draw the stroke currently being drawn
                         if (currentPath.length >= 2) {
                             ctx.beginPath()
                             ctx.moveTo(currentPath[0].x, currentPath[0].y)
@@ -125,20 +119,17 @@ ApplicationWindow {
                         anchors.fill: parent
 
                         onPressed: (mouse) => {
-                            // Start a new path array when mouse is clicked
                             drawingCanvas.currentPath = [{x: mouse.x, y: mouse.y}]
                         }
 
                         onPositionChanged: (mouse) => {
                             if (pressed) {
-                                // Add points to the path and tell the canvas to redraw
                                 drawingCanvas.currentPath.push({x: mouse.x, y: mouse.y})
                                 drawingCanvas.requestPaint()
                             }
                         }
 
                         onReleased: (mouse) => {
-                            // Save the finished path into the main paths array
                             drawingCanvas.paths.push(drawingCanvas.currentPath)
                             drawingCanvas.currentPath = []
                         }
@@ -210,7 +201,9 @@ ApplicationWindow {
                         id: bestResultValue
                         anchors.verticalCenterOffset: -30   * scaleFactor
                         anchors.centerIn: parent
-                        text:"2"
+                        text:appManager.m_bestPredictedDigit>= 0
+                             ? "Top Prediction: " + appManager.bestPredictedDigit
+                             : "Draw a digit"
                         color:"black"
                         font.pixelSize:270 * scaleFactor
                         font.bold: true
@@ -229,7 +222,7 @@ ApplicationWindow {
                         Text{
                             id: bestResultProbability
                             anchors.centerIn: parent
-                            text:"2"
+                            text: "Confidence: " + (appManager.bestProb * 100).toFixed(3) + "%"
                             color:"white"
                             font.pixelSize:15 * scaleFactor
                             font.bold: true
@@ -251,7 +244,9 @@ ApplicationWindow {
                         id: secondBestResultValue
                         anchors.verticalCenterOffset: -30* scaleFactor
                         anchors.centerIn: parent
-                        text:"2"
+                        text:appManager.m_secondBestPredictedDigit>= 0
+                             ? "Second Best Prediction: " + appManager.secondBestPredictedDigit
+                             : "Draw a digit"
                         color:"black"
                         font.pixelSize:200 * scaleFactor
                         font.bold: true
@@ -270,7 +265,7 @@ ApplicationWindow {
                         Text{
                             id: secondBestResultProbability
                             anchors.centerIn: parent
-                            text:"2"
+                            text: "Confidence: " + (appManager.secondBestProb * 100).toFixed(3) + "%"
                             color:"white"
                             font.pixelSize:15 * scaleFactor
                             font.bold: true
@@ -292,7 +287,9 @@ ApplicationWindow {
                         id: thirdBestResultValue
                         anchors.verticalCenterOffset: -30* scaleFactor
                         anchors.centerIn: parent
-                        text:"2"
+                        text:appManager.m_thirdBestPredictedDigit>= 0
+                             ? "Third Best Prediction: " + appManager.thirdBestPredictedDigit
+                             : "Draw a digit"
                         color:"black"
                         font.pixelSize:150 * scaleFactor
                         font.bold: true
@@ -311,7 +308,7 @@ ApplicationWindow {
                         Text{
                             id: thirdBestResultProbability
                             anchors.centerIn: parent
-                            text:"2"
+                            text: "Confidence: " + (appManager.thirdBestProb * 100).toFixed(3) + "%"
                             color:"white"
                             font.pixelSize:15 * scaleFactor
                             font.bold: true
@@ -321,7 +318,6 @@ ApplicationWindow {
 
                 }
                 TableView {
-                    // Positioning as you requested
                     anchors.left: parent.left
                     anchors.leftMargin: 10
                     anchors.right: parent.right
@@ -330,7 +326,6 @@ ApplicationWindow {
                     anchors.bottomMargin: 3
 
 
-                    // Fixed dimensions to fit your rows/columns
                     width: 1000
                     height: 70
 
@@ -339,7 +334,6 @@ ApplicationWindow {
                     clip: true
 
                     model: TableModel {
-                        // Define 11 columns: one for the Label, 10 for the digits 0-9
                         TableModelColumn { display: "label"; }
                         TableModelColumn { display: "v0" }
                         TableModelColumn { display: "v1" }
@@ -359,7 +353,7 @@ ApplicationWindow {
                     }
 
                     delegate: Rectangle {
-                        implicitWidth: 80 // Adjust width so it fits in your layout
+                        implicitWidth: 80
                         implicitHeight: 30
                         color: "#333333"
 
@@ -384,25 +378,26 @@ ApplicationWindow {
 
 
                     ColumnLayout {
-                            // Anchor the column inside the parent with some spacing/margins
                             anchors.fill: parent
                             anchors.margins: 10
-                            spacing: 10 // Space between each text element
+                            spacing: 10
                             layoutDirection: Qt.LeftToRight
                             Text {
                                 text: "Model Evaluation"
                                 color: "white"
                                 font.pixelSize: 15
                                 font.bold: true
-                                Layout.alignment: Qt.AlignHCenter // Centers this specific line
+                                Layout.alignment: Qt.AlignHCenter
                             }
 
                             Text {
-                                text: "Correct : 96%"
+                                text:appManager.m_modelPerformance>= 0
+                                     ? "Correct : " + appManager.thirdBestPredictedDigit + " %"
+                                     : "Model has not been evaluated"
                                 color: "white"
                                 font.pixelSize: 15
                                 font.bold: true
-                                Layout.alignment: Qt.AlignHCenter // Centers this specific line
+                                Layout.alignment: Qt.AlignHCenter
                             }
 
                             Text {
@@ -410,7 +405,7 @@ ApplicationWindow {
                                 color: "white"
                                 font.pixelSize: 15
                                 font.bold: true
-                                Layout.alignment: Qt.AlignHCenter // Centers this specific line
+                                Layout.alignment: Qt.AlignHCenter
                             }
                         }
                 }
@@ -437,13 +432,17 @@ ApplicationWindow {
                     height: 35* scaleFactor
                     font.bold: true
                     font.pixelSize: 18
-                    palette.buttonText: "white" // This sets the text color
+                    palette.buttonText: "white"
 
                     background: Rectangle {
                         radius: 5
                         color: recognizeButton.pressed ? "#03a306" :
                             (recognizeButton.hovered ? "#027d04" : "#03a306")
                         Behavior on color { ColorAnimation { duration: 100 } }
+                    }
+                    onClicked:{
+                        var pixels =canvas.getNormalizedPixels();
+                        appManager.predictedFromPixels(pixels);
                     }
                 }
                 Button {
@@ -458,14 +457,17 @@ ApplicationWindow {
                     height: 35 * scaleFactor
                     font.bold: true
                     font.pixelSize: 18
-                    palette.buttonText: "white" // This sets the text color
-                    onClicked: drawingCanvas.clear() // Hooked up the clear function!
+                    palette.buttonText: "white"
 
                     background: Rectangle {
                         radius: 5
                         color: clearButton.pressed ? "#db0909" :
                             (clearButton.hovered ? "darkred" : "#db0909")
                         Behavior on color { ColorAnimation { duration: 100 } }
+                    }
+                    onClicked:{
+                        drawingCanvas.clear()
+                        appManager.clearPrediction();
                     }
                 }
                 Button {
@@ -480,13 +482,16 @@ ApplicationWindow {
                     height: 64 * scaleFactor
                     font.bold: true
                     font.pixelSize: 18
-                    palette.buttonText: "white" // This sets the text color
+                    palette.buttonText: "white"
 
                     background: Rectangle {
                         radius: 5
                         color: trainModelButton.pressed ? "#3b3b3b" :
                             (trainModelButton.hovered ? "#000000" : "#242424")
                         Behavior on color { ColorAnimation { duration: 100 } }
+                    }
+                    onClicked:{
+                        appManager.trainModel();
                     }
                 }
                 Button {
@@ -501,12 +506,15 @@ ApplicationWindow {
                     height: 64 * scaleFactor
                     font.bold: true
                     font.pixelSize: 18
-                    palette.buttonText: "white" // This sets the text color
+                    palette.buttonText: "white"
                     background: Rectangle {
                         radius: 5
                         color: resetModelButton.pressed ? "#3b3b3b" :
                             (resetModelButton.hovered ? "#000000" : "#242424")
                         Behavior on color { ColorAnimation { duration: 100 } }
+                    }
+                    onClicked:{
+                        appManager.resetModel();
                     }
                 }
                 Button {
@@ -520,12 +528,15 @@ ApplicationWindow {
                     height: 64* scaleFactor
                     font.bold: true
                     font.pixelSize: 18
-                    palette.buttonText: "white" // This sets the text color
+                    palette.buttonText: "white"
                     background: Rectangle {
                         radius: 5
                         color: evaluateButton.pressed ? "#3b3b3b" :
                             (evaluateButton.hovered ? "#000000" : "#242424")
                         Behavior on color { ColorAnimation { duration: 100 } }
+                    }
+                    onClicked:{
+                        appManager.evaluateModel();
                     }
                 }
                 Button {
@@ -539,7 +550,7 @@ ApplicationWindow {
                     height: 64* scaleFactor
                     font.bold: true
                     font.pixelSize: 18
-                    palette.buttonText: "white" // This sets the text color
+                    palette.buttonText: "white"
                     background: Rectangle {
                         radius: 5
                         color: myButton6.pressed ? "#3b3b3b" :

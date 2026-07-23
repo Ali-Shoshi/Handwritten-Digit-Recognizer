@@ -6,7 +6,8 @@
 
 class NeuralNetwork
 {
-private:
+public:
+
     int epochs=10;
     float alpha=0.01;
     std::vector<std::vector<float>> images;
@@ -29,7 +30,6 @@ private:
     void getRandomWeight();
     float ReLU(float x);
     void train();
-public:
     NeuralNetwork();
     void forward();
     void evaluate();
