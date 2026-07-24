@@ -14,10 +14,7 @@ NeuralNetwork::NeuralNetwork() {
         std::cout << "CRITICAL: Failed to load dataset files!" << std::endl;
         return;
     }
-    std::cout << "Training started..." << std::endl;
-    train();
-    std::cout << "Training finished! Running evaluation..." << std::endl;
-    evaluate();
+
 }
 
 float NeuralNetwork::randomNumber(int inputSize) {
@@ -65,6 +62,8 @@ float NeuralNetwork::ReLU(float x) {
 }
 
 void NeuralNetwork::train() {
+    std::cout << "Training..." << std::endl;
+
     for (int i = 0; i < 60000; i++) {
         if (i % 10000 == 0) {
             std::cout << "Processed " << i << " training images..." << std::endl;
@@ -180,7 +179,9 @@ void NeuralNetwork::forward() {
     }
 }
 
-void NeuralNetwork::evaluate() {
+float NeuralNetwork::evaluate() {
+    std::cout << "Running evaluation..." << std::endl;
+    evaluate();
     std::string basePath = "C:/Users/ghost/Documents/HandwrittenDigitRecognizer/Dataset/";
 
     std::vector<std::vector<float>> testImages;
@@ -191,7 +192,7 @@ void NeuralNetwork::evaluate() {
 
     if (!imagesLoaded || !labelsLoaded) {
         std::cout << "CRITICAL: Failed to load test dataset files for evaluation!" << std::endl;
-        return;
+        return 0;
     }
 
     int correctPredictions = 0;
@@ -222,4 +223,6 @@ void NeuralNetwork::evaluate() {
     std::cout << "Evaluation Complete!" << std::endl;
     std::cout << "Correct: " << correctPredictions << " / " << totalTestSamples << std::endl;
     std::cout << "Accuracy: " << accuracy << "%" << std::endl;
+
+    return accuracy;
 }

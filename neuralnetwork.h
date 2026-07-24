@@ -13,18 +13,18 @@ public:
     std::vector<std::vector<float>> images;
     std::vector<int> labels;
 
-    std::vector<float>inputNeuron{std::vector<float>(784)};
-    std::vector<float>hidden1Neuron{std::vector<float>(128)};
-    std::vector<float>hidden2Neuron{std::vector<float>(64)};
-    std::vector<float>outputNeuron{std::vector<float>(10)};
+    std::vector<float>inputNeuron{std::vector<float>(784, 0.0f)};
+    std::vector<float>hidden1Neuron{std::vector<float>(128, 0.0f)};
+    std::vector<float>hidden2Neuron{std::vector<float>(64, 0.0f)};
+    std::vector<float>outputNeuron{std::vector<float>(10, 0.0f)};
 
-    std::vector<std::vector<float>> WIH{784 , std::vector<float>(128)};
-    std::vector<std::vector<float>> WHH{128 , std::vector<float>(64)};
-    std::vector<std::vector<float>> WHO{64 , std::vector<float>(10)};
+    std::vector<std::vector<float>> WIH{784 , std::vector<float>(128, 0.0f)};
+    std::vector<std::vector<float>> WHH{128 , std::vector<float>(64, 0.0f)};
+    std::vector<std::vector<float>> WHO{64 , std::vector<float>(10, 0.0f)};
 
-    std::vector<float> biasHidden1{std::vector<float>(128)};
-    std::vector<float> biasHidden2{std::vector<float>(64)};
-    std::vector<float> biasOutput{std::vector<float>(10)};
+    std::vector<float> biasHidden1{std::vector<float>(128, 0.0f)};
+    std::vector<float> biasHidden2{std::vector<float>(64, 0.0f)};
+    std::vector<float> biasOutput{std::vector<float>(10, 0.0f)};
 
     float randomNumber(int inputSize);
     void getRandomWeight();
@@ -32,7 +32,7 @@ public:
     void train();
     NeuralNetwork();
     void forward();
-    void evaluate();
+    float evaluate();
 
 
 };

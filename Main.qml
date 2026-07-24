@@ -202,8 +202,8 @@ ApplicationWindow {
                         anchors.verticalCenterOffset: -30   * scaleFactor
                         anchors.centerIn: parent
                         text:appManager.m_bestPredictedDigit>= 0
-                             ? "Top Prediction: " + appManager.bestPredictedDigit
-                             : "Draw a digit"
+                             ? appManager.bestPredictedDigit
+                             : " "
                         color:"black"
                         font.pixelSize:270 * scaleFactor
                         font.bold: true
@@ -245,8 +245,8 @@ ApplicationWindow {
                         anchors.verticalCenterOffset: -30* scaleFactor
                         anchors.centerIn: parent
                         text:appManager.m_secondBestPredictedDigit>= 0
-                             ? "Second Best Prediction: " + appManager.secondBestPredictedDigit
-                             : "Draw a digit"
+                             ? appManager.secondBestPredictedDigit
+                             : " "
                         color:"black"
                         font.pixelSize:200 * scaleFactor
                         font.bold: true
@@ -288,8 +288,8 @@ ApplicationWindow {
                         anchors.verticalCenterOffset: -30* scaleFactor
                         anchors.centerIn: parent
                         text:appManager.m_thirdBestPredictedDigit>= 0
-                             ? "Third Best Prediction: " + appManager.thirdBestPredictedDigit
-                             : "Draw a digit"
+                             ? appManager.thirdBestPredictedDigit
+                             : " "
                         color:"black"
                         font.pixelSize:150 * scaleFactor
                         font.bold: true
@@ -491,6 +491,7 @@ ApplicationWindow {
                         Behavior on color { ColorAnimation { duration: 100 } }
                     }
                     onClicked:{
+                        console.log(">>> [QML] Button clicked, calling trainModel()...")
                         appManager.trainModel();
                     }
                 }
@@ -583,4 +584,17 @@ ApplicationWindow {
             }
         }
     }
+    BusyIndicator {
+            id: busyIndicator
+            running: appManager.m_isTraining
+            visible: appManager.m_isTraining
+        }
+
+        // Hide the spinner once C++ emits modelEvaluationChanged
+        Connections {
+            target: appManager
+            function onModelEvaluationChanged() {
+                busyIndicator.running = false
+            }
+        }
 }

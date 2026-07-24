@@ -41,6 +41,7 @@ set_target_properties(appHandwrittenDigitRecognizer PROPERTIES
 
 target_link_libraries(appHandwrittenDigitRecognizer
     PRIVATE Qt6::Quick
+    PRIVATE Qt6::Concurrent
 )
 
 install(TARGETS appHandwrittenDigitRecognizer

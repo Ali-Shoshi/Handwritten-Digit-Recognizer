@@ -17,7 +17,8 @@ class AppManager : public QObject {
     Q_PROPERTY(float secondBestProb READ secondBestProb NOTIFY predictionChanged)
     Q_PROPERTY(float thirdBestPredictedDigit READ thirdBestPredictedDigit NOTIFY predictionChanged)
 
-    Q_PROPERTY(float evaluationOfModel READ evaluationOfModel NOTIFY modelEvaluationChanged)
+    Q_PROPERTY(float modelPerformance READ modelPerformance NOTIFY modelEvaluationChanged)
+    Q_PROPERTY(bool isTraining READ isTraining NOTIFY isTrainingChanged)
 
 
     Q_PROPERTY(QVariantList probabilities READ probabilities NOTIFY predictionChanged)
@@ -34,7 +35,8 @@ public:
     float secondBestProb() const { return m_secondBestProb; }
     float thirdBestProb() const { return m_thirdBestProb; }
 
-    float modelEvaluationChanged() const {return m_modelPerformance;}
+    float modelPerformance() const {return m_modelPerformance;}
+    bool isTraining() const {return m_isTraining;}
 
     QVariantList probabilities() const { return m_probabilities; }
 
@@ -49,6 +51,8 @@ signals:
     // Signal emitted when prediction updates
     void predictionChanged();
     void modelEvaluationChanged();
+    void isTrainingChanged();
+
 
 private:
     NeuralNetwork m_nn;
@@ -62,6 +66,8 @@ private:
     float m_thirdBestProb = 0.0f;
 
     float m_modelPerformance = 0.0f ;
+    bool m_isTraining=false;
+
 
     QVariantList m_probabilities;
 };
