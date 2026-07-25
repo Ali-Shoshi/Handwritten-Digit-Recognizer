@@ -584,17 +584,49 @@ ApplicationWindow {
             }
         }
     }
-    BusyIndicator {
-            id: busyIndicator
-            running: appManager.m_isTraining
-            visible: appManager.m_isTraining
+    Rectangle {
+        anchors.fill: parent
+        color: "#80808080"
+        anchors.centerIn: parent
+        visible: appManager.isTraining
+
+        Text{
+            text:"Model is training"
+            color: "white"
+            font.pixelSize: 22
+            font.bold: true
+            anchors.centerIn: parent
+            visible: appManager.isTraining
+            anchors.verticalCenterOffset: -45* scaleFactor
+
+        }
+        Text{
+            text:"Model is being evaluated"
+            color: "white"
+            font.pixelSize: 22
+            font.bold: true
+            anchors.centerIn: parent
+            visible: appManager.modelPerformance
+            anchors.verticalCenterOffset: -45* scaleFactor
+
         }
 
-        // Hide the spinner once C++ emits modelEvaluationChanged
-        Connections {
-            target: appManager
-            function onModelEvaluationChanged() {
-                busyIndicator.running = false
+        BusyIndicator {
+                id: busyIndicator
+                running: appManager.isTraining || appManager.modelPerformance
+                visible: appManager.isTraining || appManager.modelPerformance
+                anchors.centerIn: parent
+
             }
-        }
+            // Hide the spinner once C++ emits modelEvaluationChanged
+            Connections {
+                target: appManager
+                function isTrainingChanged() {
+                    busyIndicator.running = false
+                }
+                function modelEvaluationChanged() {
+                    busyIndicator.running = false
+                }
+            }
+    }
 }

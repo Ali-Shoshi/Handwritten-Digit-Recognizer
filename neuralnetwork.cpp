@@ -133,6 +133,8 @@ void NeuralNetwork::train() {
             biasHidden1[h1] -= alpha * hidden1_deltas[h1];
         }
     }
+    std::cout << "Training Done!!!" << std::endl;
+
 }
 
 void NeuralNetwork::forward() {
@@ -181,7 +183,7 @@ void NeuralNetwork::forward() {
 
 float NeuralNetwork::evaluate() {
     std::cout << "Running evaluation..." << std::endl;
-    evaluate();
+
     std::string basePath = "C:/Users/ghost/Documents/HandwrittenDigitRecognizer/Dataset/";
 
     std::vector<std::vector<float>> testImages;

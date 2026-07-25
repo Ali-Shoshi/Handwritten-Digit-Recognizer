@@ -74,13 +74,13 @@ void AppManager::clearPrediction() {
 }
 
 void AppManager::trainModel(){
-    std::cout << "Training started..." << std::endl;
 
     if (m_isTraining) {
         return;
     }
 
     m_isTraining = true;
+    std::cout << "Training started" << std::endl;
     emit isTrainingChanged();
 
     auto future = QtConcurrent::run([this]() {
