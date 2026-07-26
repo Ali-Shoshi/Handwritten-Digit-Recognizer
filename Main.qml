@@ -4,6 +4,7 @@ import QtQuick.Controls.Basic
 import QtQuick.Controls
 import Qt.labs.qmlmodels
 
+
 ApplicationWindow {
     id: window
     width: 640
@@ -61,81 +62,6 @@ ApplicationWindow {
                 color: "#5a5a5a"
                 radius: 10
 
-                Canvas {
-                    id: drawingCanvas
-                    anchors.top: parent.top
-                    anchors.topMargin: 40
-                    anchors.left: parent.left
-                    anchors.leftMargin: 10
-                    anchors.right: parent.right
-                    anchors.rightMargin: 10
-                    width: 400 * scaleFactor
-                    height: 400 * scaleFactor
-
-
-                    property var paths: []
-                    property var currentPath: []
-
-                    function clear() {
-                        paths = []
-                        currentPath = []
-                        requestPaint()
-                    }
-
-                    onPaint: {
-                        var ctx = getContext("2d")
-
-                        ctx.fillStyle = "black"
-                        ctx.fillRect(0, 0, width, height)
-
-                        ctx.strokeStyle = "white"
-                        ctx.lineWidth = 20 * scaleFactor
-                        ctx.lineCap = "round"
-                        ctx.lineJoin = "round"
-
-                        for (var i = 0; i < paths.length; i++) {
-                            var p = paths[i]
-                            if (p.length < 2) continue
-                            ctx.beginPath()
-                            ctx.moveTo(p[0].x, p[0].y)
-                            for (var j = 1; j < p.length; j++) {
-                                ctx.lineTo(p[j].x, p[j].y)
-                            }
-                            ctx.stroke()
-                        }
-
-                        if (currentPath.length >= 2) {
-                            ctx.beginPath()
-                            ctx.moveTo(currentPath[0].x, currentPath[0].y)
-                            for (var k = 1; k < currentPath.length; k++) {
-                                ctx.lineTo(currentPath[k].x, currentPath[k].y)
-                            }
-                            ctx.stroke()
-                        }
-                    }
-
-                    MouseArea {
-                        id: mouseArea
-                        anchors.fill: parent
-
-                        onPressed: (mouse) => {
-                            drawingCanvas.currentPath = [{x: mouse.x, y: mouse.y}]
-                        }
-
-                        onPositionChanged: (mouse) => {
-                            if (pressed) {
-                                drawingCanvas.currentPath.push({x: mouse.x, y: mouse.y})
-                                drawingCanvas.requestPaint()
-                            }
-                        }
-
-                        onReleased: (mouse) => {
-                            drawingCanvas.paths.push(drawingCanvas.currentPath)
-                            drawingCanvas.currentPath = []
-                        }
-                    }
-                }
-
                 Rectangle {
                     id: rectangle7
                     x: 10
@@ -158,6 +84,161 @@ ApplicationWindow {
                         font.bold: true
                     }
                 }
+
+                Canvas {
+                    id: drawingCanvas
+
+                    // 1. DYNAMIC SIZING: Fill parent container or use relative anchors
+                    anchors.fill: parent
+                    anchors.top: parent.top
+                    anchors.topMargin: 30
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 10
+                    anchors.left: parent.left
+                    anchors.leftMargin: 10
+                    anchors.right: parent.right
+                    anchors.rightMargin: 10
+
+                    property var paths: []
+                    property var currentPath: []
+                    property color strokeColor: "#FFFFFF"
+                    property real currentLineWidth: 18 * scaleFactor
+                    // Store previous size to calculate scaling factors when resized
+                    property real lastWidth: width
+                    property real lastHeight: height
+
+                    // Trigger prediction manually via button click
+                    function triggerPrediction() {
+                        // Calculate the exact area inside the MouseArea margins
+                        var captureX = mouseArea.x;
+                        var captureY = mouseArea.y;
+                        var captureWidth = mouseArea.width;
+                        var captureHeight = mouseArea.height;
+
+                        drawingCanvas.grabToImage(function(result) {
+                            appManager.predictFromImage(result.image);
+                        }, Qt.rect(captureX, captureY, captureWidth, captureHeight));
+                    }
+
+                    function clear() {
+                        paths = []
+                        currentPath = []
+                        requestPaint()
+                        appManager.clearPrediction()
+                    }
+
+                    // 2. RESIZE HANDLING: Scale stroke coordinates proportionally when screen resizes
+                    onWidthChanged: rescalePaths()
+                    onHeightChanged: rescalePaths()
+
+                    function rescalePaths() {
+                        if (lastWidth <= 0 || lastHeight <= 0) {
+                            lastWidth = width;
+                            lastHeight = height;
+                            return;
+                        }
+
+                        var scaleX = width / lastWidth;
+                        var scaleY = height / lastHeight;
+
+                        // Recalculate stored paths relative to new dimensions
+                        for (var i = 0; i < paths.length; i++) {
+                            for (var j = 0; j < paths[i].length; j++) {
+                                paths[i][j].x *= scaleX;
+                                paths[i][j].y *= scaleY;
+                            }
+                        }
+
+                        lastWidth = width;
+                        lastHeight = height;
+                        requestPaint();
+                    }
+
+                    onPaint: {
+                        var ctx = getContext("2d")
+
+                        // Draw background
+                        ctx.fillStyle = "black"
+                        ctx.fillRect(0, 0, width, height)
+
+                        // Adjust line width proportionally relative to canvas size
+                        ctx.strokeStyle = "white"
+                        ctx.lineWidth = Math.min(width, height) * 0.10
+                        ctx.lineCap = "round"
+                        ctx.lineJoin = "round"
+
+                        // Render completed paths
+                        for (var i = 0; i < paths.length; i++) {
+                            var p = paths[i]
+                            if (p.length < 2) continue
+                            ctx.beginPath()
+                            ctx.moveTo(p[0].x, p[0].y)
+                            for (var j = 1; j < p.length; j++) {
+                                ctx.lineTo(p[j].x, p[j].y)
+                            }
+                            ctx.stroke()
+                        }
+
+                        // Render current active path
+                        if (currentPath.length >= 2) {
+                            ctx.beginPath()
+                            ctx.moveTo(currentPath[0].x, currentPath[0].y)
+                            for (var k = 1; k < currentPath.length; k++) {
+                                ctx.lineTo(currentPath[k].x, currentPath[k].y)
+                            }
+                            ctx.stroke()
+                        }
+                    }
+
+                    MouseArea {
+                        id: mouseArea
+                        anchors.fill: parent
+                        anchors.margins: 50 * scaleFactor
+
+                        Rectangle {
+                            anchors.fill: parent
+                            color: mouseArea.containsMouse ? "#10FFFFFF" : "transparent"
+                            border.color: mouseArea.containsMouse ? "#00FF00" : "#555555"
+                            border.width: 2
+                            radius: 4
+                        }
+
+                        Rectangle {
+                                id: innerActiveRect
+                                anchors.fill: parent
+                                anchors.margins: 60 * scaleFactor // Makes it smaller than outer box
+
+                                // Fully invisible when not writing
+                                visible: mouseArea.pressed
+
+                                color: "#20FF0000" // Light semi-transparent red fill
+                                border.color: "#FF3333" // Bright red border
+                                border.width: 2
+                                radius: 4
+                        }
+
+                        onPressed: (mouse) => {
+                            // Map local MouseArea coords (mouse.x, mouse.y) to Canvas coords
+                            var pt = mapToItem(drawingCanvas, mouse.x, mouse.y)
+                            drawingCanvas.currentPath = [{x: pt.x, y: pt.y}]
+                        }
+
+                        onPositionChanged: (mouse) => {
+                            if (pressed) {
+                                var pt = mapToItem(drawingCanvas, mouse.x, mouse.y)
+                                drawingCanvas.currentPath.push({x: pt.x, y: pt.y})
+                                drawingCanvas.requestPaint()
+                            }
+                        }
+
+                        onReleased: (mouse) => {
+                            drawingCanvas.paths.push(drawingCanvas.currentPath)
+                            drawingCanvas.currentPath = []
+                        }
+                    }
+                }
+
+
             }
 
             // --- ROW 1, COL 2 (Fills Width, Height matches Row 1) ---
@@ -201,7 +282,7 @@ ApplicationWindow {
                         id: bestResultValue
                         anchors.verticalCenterOffset: -30   * scaleFactor
                         anchors.centerIn: parent
-                        text:appManager.m_bestPredictedDigit>= 0
+                        text:appManager.bestPredictedDigit>= 0
                              ? appManager.bestPredictedDigit
                              : " "
                         color:"black"
@@ -244,7 +325,7 @@ ApplicationWindow {
                         id: secondBestResultValue
                         anchors.verticalCenterOffset: -30* scaleFactor
                         anchors.centerIn: parent
-                        text:appManager.m_secondBestPredictedDigit>= 0
+                        text:appManager.secondBestPredictedDigit>= 0
                              ? appManager.secondBestPredictedDigit
                              : " "
                         color:"black"
@@ -287,7 +368,7 @@ ApplicationWindow {
                         id: thirdBestResultValue
                         anchors.verticalCenterOffset: -30* scaleFactor
                         anchors.centerIn: parent
-                        text:appManager.m_thirdBestPredictedDigit>= 0
+                        text:appManager.thirdBestPredictedDigit>= 0
                              ? appManager.thirdBestPredictedDigit
                              : " "
                         color:"black"
@@ -372,7 +453,6 @@ ApplicationWindow {
                     anchors.rightMargin: 10
                     anchors.left: parent.left
                     anchors.leftMargin: 900* scaleFactor
-
                     color: "#333333"
                     height:100* scaleFactor
 
@@ -381,31 +461,31 @@ ApplicationWindow {
                             anchors.fill: parent
                             anchors.margins: 10
                             spacing: 10
-                            layoutDirection: Qt.LeftToRight
                             Text {
                                 text: "Model Evaluation"
                                 color: "white"
                                 font.pixelSize: 15
                                 font.bold: true
-                                Layout.alignment: Qt.AlignHCenter
+                                Layout.fillWidth: true
+                                horizontalAlignment: Text.AlignHCenter
                             }
 
                             Text {
-                                text:appManager.m_modelPerformance>= 0
-                                     ? "Correct : " + appManager.thirdBestPredictedDigit + " %"
+
+                                property bool isEvaluated: (appManager?.modelPerformance?? 0)>0
+                                text:isEvaluated
+                                     ? "Correct : " + appManager.modelPerformance.toFixed(3) + " %"
                                      : "Model has not been evaluated"
-                                color: "white"
-                                font.pixelSize: 15
-                                font.bold: true
-                                Layout.alignment: Qt.AlignHCenter
-                            }
 
-                            Text {
-                                text: "70000/80000"
                                 color: "white"
                                 font.pixelSize: 15
                                 font.bold: true
-                                Layout.alignment: Qt.AlignHCenter
+                                Layout.fillWidth: true
+                                horizontalAlignment: Text.AlignHCenter
+
+                                wrapMode: isEvaluated? Text.NoWrap : Text.WordWrap
+                                fontSizeMode: Text.Fit
+                                minimumPixelSize:8
                             }
                         }
                 }
@@ -441,8 +521,7 @@ ApplicationWindow {
                         Behavior on color { ColorAnimation { duration: 100 } }
                     }
                     onClicked:{
-                        var pixels =canvas.getNormalizedPixels();
-                        appManager.predictedFromPixels(pixels);
+                        drawingCanvas.triggerPrediction()
                     }
                 }
                 Button {
@@ -537,28 +616,33 @@ ApplicationWindow {
                         Behavior on color { ColorAnimation { duration: 100 } }
                     }
                     onClicked:{
+                        console.log(">>> [QML] Button clicked, calling evaluateModel()...")
                         appManager.evaluateModel();
                     }
                 }
-                Button {
-                    id: myButton6
-                    text: "Click Me"
+                Rectangle {
+                    radius: 5
+                    color: "#3b3b3b"
+                    width: 200 * scaleFactor
+                    height: 64* scaleFactor
+
                     anchors.top: parent.top
                     anchors.topMargin: 160 * scaleFactor
                     anchors.right: parent.right
                     anchors.rightMargin: 5
-                    width: 200 * scaleFactor
-                    height: 64* scaleFactor
-                    font.bold: true
-                    font.pixelSize: 18
-                    palette.buttonText: "white"
-                    background: Rectangle {
-                        radius: 5
-                        color: myButton6.pressed ? "#3b3b3b" :
-                            (myButton6.hovered ? "#000000" : "#242424")
-                        Behavior on color { ColorAnimation { duration: 100 } }
+                    Text {
+                        text: appManager?.actionDone ?? ""
+                        width: parent.width - 16 * scaleFactor
+                        anchors.centerIn: parent
+                        font.bold: true
+                        font.pixelSize: 18 * scaleFactor
+                        color: "#12ff22"
+                        wrapMode: Text.WordWrap
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
                     }
                 }
+
             }
 
             // --- ROW 2, COL 2 (Fills Remaining Width AND Height) ---
@@ -588,45 +672,87 @@ ApplicationWindow {
         anchors.fill: parent
         color: "#80808080"
         anchors.centerIn: parent
-        visible: appManager.isTraining
-
-        Text{
-            text:"Model is training"
-            color: "white"
-            font.pixelSize: 22
-            font.bold: true
-            anchors.centerIn: parent
-            visible: appManager.isTraining
-            anchors.verticalCenterOffset: -45* scaleFactor
-
+        visible: appManager.isTraining || appManager.isEvaluating
+        TapHandler {
+                gesturePolicy: TapHandler.WithinBounds
+            }
+        // Hide the spinner once C++ emits modelEvaluationChanged
+        Connections {
+            target: appManager
+            function isTrainingChanged() {
+                busyIndicator.running = false
+            }
+            function modelEvaluationChanged() {
+                busyIndicator.running = false
+            }
         }
-        Text{
-            text:"Model is being evaluated"
-            color: "white"
-            font.pixelSize: 22
-            font.bold: true
-            anchors.centerIn: parent
-            visible: appManager.modelPerformance
-            anchors.verticalCenterOffset: -45* scaleFactor
-
+        TapHandler {
+            gesturePolicy: TapHandler.WithinBounds
         }
+        HoverHandler {
+            blocking: true
+        }
+        ColumnLayout {
+            anchors.centerIn: parent
+            spacing: 20
+            width: Math.min(parent.width * 0.6, 400 * scaleFactor)
 
-        BusyIndicator {
+            // 1. Text Status
+            Text {
+                text: appManager?.isTraining
+                      ? "Training Progress: " + Math.round((appManager?.trainingProgress ?? 0) * 100) + "%"
+                      : "Model is being evaluated..."
+                color: "white"
+                font.pixelSize: 22 * scaleFactor
+                font.bold: true
+                Layout.alignment: Qt.AlignHCenter
+            }
+
+            // 2. Busy Indicator Spinner
+            BusyIndicator {
                 id: busyIndicator
-                running: appManager.isTraining || appManager.modelPerformance
-                visible: appManager.isTraining || appManager.modelPerformance
-                anchors.centerIn: parent
+                running: overlay.visible
+                Layout.alignment: Qt.AlignHCenter
+            }
 
-            }
-            // Hide the spinner once C++ emits modelEvaluationChanged
-            Connections {
-                target: appManager
-                function isTrainingChanged() {
-                    busyIndicator.running = false
+            // 3. Progress Bar (Only visible while training)
+            ProgressBar {
+                id: trainingProgressBar
+                Layout.fillWidth: true
+                Layout.preferredHeight: 16 * scaleFactor
+                visible: appManager.isTraining
+
+                from: 0.0
+                to: 1.0
+                value: appManager?.trainingProgress ?? 0.0
+
+                // Dark track background
+                background: Rectangle {
+                    implicitWidth: 200
+                    implicitHeight: 16 * scaleFactor
+                    color: "#2a2a2a"
+                    radius: 8
+                    border.color: "#444444"
+                    border.width: 1
                 }
-                function modelEvaluationChanged() {
-                    busyIndicator.running = false
+
+                // Green filled progress bar
+                contentItem: Item {
+                    implicitWidth: 200
+                    implicitHeight: 16 * scaleFactor
+
+                    Rectangle {
+                        width: trainingProgressBar.visualPosition * parent.width
+                        height: parent.height
+                        radius: 8
+                        color: "#12ff22" // Bright green progress fill
+
+                        Behavior on width {
+                            NumberAnimation { duration: 150 }
+                        }
+                    }
                 }
             }
+        }
     }
 }

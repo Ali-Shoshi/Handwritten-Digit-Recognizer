@@ -15,10 +15,19 @@ class AppManager : public QObject {
 
     Q_PROPERTY(float bestProb READ bestProb NOTIFY predictionChanged)
     Q_PROPERTY(float secondBestProb READ secondBestProb NOTIFY predictionChanged)
-    Q_PROPERTY(float thirdBestPredictedDigit READ thirdBestPredictedDigit NOTIFY predictionChanged)
+    Q_PROPERTY(float thirdBestProb READ thirdBestProb NOTIFY predictionChanged)
 
     Q_PROPERTY(float modelPerformance READ modelPerformance NOTIFY modelEvaluationChanged)
+
     Q_PROPERTY(bool isTraining READ isTraining NOTIFY isTrainingChanged)
+    Q_PROPERTY(float trainingProgress READ trainingProgress NOTIFY trainingProgressChanged)
+
+    Q_PROPERTY(bool isEvaluating READ isEvaluating NOTIFY modelEvaluationChanged)
+
+    Q_PROPERTY(QString actionDone READ actionDone NOTIFY actionDoneChanged)
+
+
+
 
 
     Q_PROPERTY(QVariantList probabilities READ probabilities NOTIFY predictionChanged)
@@ -36,11 +45,18 @@ public:
     float thirdBestProb() const { return m_thirdBestProb; }
 
     float modelPerformance() const {return m_modelPerformance;}
+    float trainingProgress() const{return m_trainingProgress;}
+
+    QString actionDone() const {return m_actionDone;}
+
     bool isTraining() const {return m_isTraining;}
+    bool isEvaluating() const {return m_isEvaluating;}
+
 
     QVariantList probabilities() const { return m_probabilities; }
 
     // Methods callable directly from QML
+    Q_INVOKABLE void predictFromImage(const QVariant &imageVariant);
     Q_INVOKABLE void predictFromPixels(const QList<float> &pixelBuffer);
     Q_INVOKABLE void clearPrediction();
     Q_INVOKABLE void trainModel();
@@ -50,8 +66,12 @@ public:
 signals:
     // Signal emitted when prediction updates
     void predictionChanged();
+    void actionDoneChanged();
+    void resetModelChanged();
+
     void modelEvaluationChanged();
     void isTrainingChanged();
+    void trainingProgressChanged();
 
 
 private:
@@ -66,8 +86,12 @@ private:
     float m_thirdBestProb = 0.0f;
 
     float m_modelPerformance = 0.0f ;
-    bool m_isTraining=false;
+    float m_trainingProgress =0.0f;
 
+    bool m_isTraining=false;
+    bool m_isEvaluating=false;
+
+    QString m_actionDone="";
 
     QVariantList m_probabilities;
 };

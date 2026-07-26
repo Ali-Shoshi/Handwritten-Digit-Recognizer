@@ -61,12 +61,20 @@ float NeuralNetwork::ReLU(float x) {
     return (x > 0) ? x : 0;
 }
 
-void NeuralNetwork::train() {
+void NeuralNetwork::train(ProgressCallback onProgress) {
     std::cout << "Training..." << std::endl;
+
+    int totalImages=images.size();
+    if(totalImages==0) return;
 
     for (int i = 0; i < 60000; i++) {
         if (i % 10000 == 0) {
             std::cout << "Processed " << i << " training images..." << std::endl;
+        }
+
+        if(onProgress && (i%600 ==0 || i == totalImages-1)){
+            float progress=static_cast<float>(i+1)/static_cast<float>(totalImages);
+            onProgress(progress);
         }
 
         inputNeuron = images[i];

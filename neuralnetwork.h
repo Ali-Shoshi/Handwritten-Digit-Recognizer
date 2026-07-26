@@ -2,11 +2,14 @@
 #define NEURALNETWORK_H
 #include <vector>
 #include <ctime>
+#include <functional>
 
 
 class NeuralNetwork
 {
 public:
+
+    using ProgressCallback = std::function<void(float)>;
 
     int epochs=10;
     float alpha=0.01;
@@ -29,7 +32,7 @@ public:
     float randomNumber(int inputSize);
     void getRandomWeight();
     float ReLU(float x);
-    void train();
+    void train(ProgressCallback onProgress = nullptr);
     NeuralNetwork();
     void forward();
     float evaluate();
