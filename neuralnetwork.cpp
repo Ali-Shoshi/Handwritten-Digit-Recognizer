@@ -4,6 +4,7 @@
 #include <ctime>
 #include <random>
 #include <iostream>
+#include <algorithm>
 
 NeuralNetwork::NeuralNetwork() {
     getRandomWeight();
@@ -21,44 +22,71 @@ float NeuralNetwork::randomNumber(int inputSize) {
     static std::random_device rd;
     static std::mt19937 gen(rd());
 
-    float stddev = std::sqrt(2.0 / inputSize);
-    std::normal_distribution<float> d(0.0, stddev);
+    float stddev = std::sqrt(2.0f / inputSize);
+    std::normal_distribution<float> d(0.0f, stddev);
     return d(gen);
 }
 
 void NeuralNetwork::getRandomWeight() {
-    // WIH: [784 (input)][128 (hidden1)]
-    for (int i = 0; i < 784; i++) {
-        for (int j = 0; j < 128; j++) {
-            WIH[i][j] = randomNumber(784);
-        }
-    }
-    // WHH: [128 (hidden1)][64 (hidden2)]
-    for (int i = 0; i < 128; i++) {
-        for (int j = 0; j < 64; j++) {
-            WHH[i][j] = randomNumber(128);
-        }
-    }
-    // WHO: [64 (hidden2)][10 (output)]
-    for (int i = 0; i < 64; i++) {
-        for (int j = 0; j < 10; j++) {
-            WHO[i][j] = randomNumber(64);
+
+    convWeights.resize(numFilters, std::vector<std::vector<float>>(filterSize, std::vector<float>(filterSize)));
+    convBiases.resize(numFilters, 0.0f);
+
+    for( int f =0 ; f< numFilters;f++){
+        for( int i =0; i<filterSize; i++){
+            for( int j=0 ; j<filterSize ; j++){
+                convWeights[f][i][j]=randomNumber(filterSize * filterSize);
+            }
         }
     }
 
-    for (int i = 0; i < 128; i++) {
-        biasHidden1[i] = 0.0f;
+    int flatSize = numFilters * poolOutputDim * poolOutputDim; // 16 x 13 X 13 [2704 inputs][10 outputs]
+    denseWeights.resize(flatSize, std::vector<float>(10,0.0f));
+    denseBiases.resize(10, 0.0f);
+
+    for( int i =0 ; i< flatSize ; i++){
+        for( int j =0 ; j< 10 ;j++){
+            denseWeights[i][j]=randomNumber(flatSize);
+        }
     }
-    for (int i = 0; i < 64; i++) {
-        biasHidden2[i] = 0.0f;
-    }
-    for (int i = 0; i < 10; i++) {
-        biasOutput[i] = 0.0f;
-    }
+        outputNeuron.resize(10 , 0.0f);
+
 }
 
-float NeuralNetwork::ReLU(float x) {
+inline float NeuralNetwork::ReLU(float x) {
     return (x > 0) ? x : 0;
+}
+
+void NeuralNetwork::forward(const std::vector<float>& inputImage) {
+
+    //Reshape the input to from a 1D to 2D (28 x 28)
+    lastInput2D.assign(28, std::vector<float>(28));
+    for( int i=0; i< 28 ; i++){
+        for ( int j=0 ; j< 28 ; j++){
+            lastInput2D[i][i]= inputImage[i*28+j];
+        }
+    }
+
+    // Convolution Layer (28 x 28 -> 16 feature maps of 26 x 26)
+    lastConvOutput.assign(numFilters, std::vector<std::vector<float>>(convOutputDim, std::vector<float>(convOutputDim, 0.0f)));
+    for(int f =0 ; f< numFilters; f++){
+        for ( int i =0 ; i< convOutputDim ; i++){
+            for( int j=0; j<convOutputDim ; j++){
+                float sum =0.0f;
+                for(int ki =0 ; ki < filterSize; ki++){
+                    for ( int kj =0; kj < filterSize; kj++){
+                        sum+=lastInput2D[i+ki][j+kj] * convWeights[f][ki][kj];
+                    }
+                }
+                lastConvOutput[f][i][j] = ReLU(sum + convBiases[f]);
+            }
+        }
+    }
+
+    // Max Pooling Layer (2x2 pool window: 26x26 -> 13x13)
+
+
+
 }
 
 void NeuralNetwork::train(ProgressCallback onProgress) {
@@ -145,49 +173,7 @@ void NeuralNetwork::train(ProgressCallback onProgress) {
 
 }
 
-void NeuralNetwork::forward() {
-    // Input -> Hidden 1 (WIH is [784][128])
-    for (int i = 0; i < 128; i++) {
-        hidden1Neuron[i] = 0;
-        for (int j = 0; j < 784; j++) {
-            hidden1Neuron[i] += WIH[j][i] * inputNeuron[j];
-        }
-        hidden1Neuron[i] += biasHidden1[i];
-        hidden1Neuron[i] = ReLU(hidden1Neuron[i]);
-    }
 
-    // Hidden 1 -> Hidden 2 (WHH is [128][64])
-    for (int i = 0; i < 64; i++) {
-        hidden2Neuron[i] = 0;
-        for (int j = 0; j < 128; j++) {
-            hidden2Neuron[i] += WHH[j][i] * hidden1Neuron[j];
-        }
-        hidden2Neuron[i] += biasHidden2[i];
-        hidden2Neuron[i] = ReLU(hidden2Neuron[i]);
-    }
-
-    // Hidden 2 -> Output (WHO is [64][10])
-    float max_logit = -1e9;
-    for (int i = 0; i < 10; i++) {
-        outputNeuron[i] = 0;
-        for (int j = 0; j < 64; j++) {
-            outputNeuron[i] += WHO[j][i] * hidden2Neuron[j];
-        }
-        outputNeuron[i] += biasOutput[i];
-        if (outputNeuron[i] > max_logit) {
-            max_logit = outputNeuron[i];
-        }
-    }
-
-    double sum_exp = 0;
-    for (int i = 0; i < 10; i++) {
-        outputNeuron[i] = std::exp(outputNeuron[i] - max_logit);
-        sum_exp += outputNeuron[i];
-    }
-    for (int i = 0; i < 10; i++) {
-        outputNeuron[i] = outputNeuron[i] / sum_exp;
-    }
-}
 
 float NeuralNetwork::evaluate() {
     std::cout << "Running evaluation..." << std::endl;

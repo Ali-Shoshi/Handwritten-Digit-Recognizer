@@ -16,28 +16,35 @@ public:
     std::vector<std::vector<float>> images;
     std::vector<int> labels;
 
-    std::vector<float>inputNeuron{std::vector<float>(784, 0.0f)};
-    std::vector<float>hidden1Neuron{std::vector<float>(128, 0.0f)};
-    std::vector<float>hidden2Neuron{std::vector<float>(64, 0.0f)};
-    std::vector<float>outputNeuron{std::vector<float>(10, 0.0f)};
+    int numFilters =16;
+    int filterSize =3;
+    int convOutputDim =26;  // 28 - 3 + 1
+    int poolOutputDim = 13; // 26 / 2
 
-    std::vector<std::vector<float>> WIH{784 , std::vector<float>(128, 0.0f)};
-    std::vector<std::vector<float>> WHH{128 , std::vector<float>(64, 0.0f)};
-    std::vector<std::vector<float>> WHO{64 , std::vector<float>(10, 0.0f)};
+    std::vector<std::vector<std::vector<float>>> convWeights; // [numfilters] [3][3]
+    std::vector<float> convBiases;                            // [numfilters]
 
-    std::vector<float> biasHidden1{std::vector<float>(128, 0.0f)};
-    std::vector<float> biasHidden2{std::vector<float>(64, 0.0f)};
-    std::vector<float> biasOutput{std::vector<float>(10, 0.0f)};
+    std::vector<std::vector<float>> denseWeights;   //[2704][10]  16 filters} X  13 height X 13 width = 2,704 values
+    std::vector<float>denseBiases;                  // [10]
+
+
+    //Caching for backpropagatoin
+    std::vector<std::vector<float>> lastInput2D;
+    std::vector<std::vector<std::vector<float>>> lastConvOutput;
+    std::vector<std::vector<std::vector<float>>>lastPoolOutput;
+    std::vector<float> lastFlattened;               // [flatSize][10]
+    std::vector<float> outputNeuron;                // [10]
+
+    NeuralNetwork();
 
     float randomNumber(int inputSize);
     void getRandomWeight();
     float ReLU(float x);
-    void train(ProgressCallback onProgress = nullptr);
-    NeuralNetwork();
-    void forward();
-    float evaluate();
 
+    void train(ProgressCallback onProgress = nullptr);
+    void forward(const std::vector<float>& inputImage);
+    float evaluate();
 
 };
 
-#endif // NEURALNETWORK_H
+#endif
