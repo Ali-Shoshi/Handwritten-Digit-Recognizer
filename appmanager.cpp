@@ -15,11 +15,8 @@ void AppManager::predictFromPixels(const QList<float> &pixelBuffer) {
         return;
     }
 
-    // 1. Load input into neural network
-    m_nn.inputNeuron = std::vector<float>(pixelBuffer.begin(), pixelBuffer.end());
-
     // 2. Run forward pass
-    m_nn.forward();
+    m_nn.forward(std::vector<float>(pixelBuffer.begin(), pixelBuffer.end()));
 
     // 3. Store pairs of (probability, digit_index)
     std::vector<std::pair<float, int>> results;
