@@ -10,9 +10,9 @@ class NeuralNetwork
 public:
     using ProgressCallback = std::function<void(float)>;
 
-    int epochs = 10;
-    float alpha = 0.01f;          // raised from 0.001
-    float l2 = 1e-4f;             // small L2 on dense weights
+    int epochs = 15;
+    float alpha = 0.001f;         // Lowered to stabilize pure SGD
+    float l2 = 1e-4f;             // Small L2 on dense weights
 
     std::vector<std::vector<float>> images;
     std::vector<int> labels;
