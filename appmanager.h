@@ -25,6 +25,7 @@ class AppManager : public QObject {
     Q_PROPERTY(bool isEvaluating READ isEvaluating NOTIFY modelEvaluationChanged)
 
     Q_PROPERTY(QString actionDone READ actionDone NOTIFY actionDoneChanged)
+    Q_PROPERTY(QString processedInputPreview READ processedInputPreview NOTIFY processedInputPreviewChanged)
 
 
 
@@ -48,6 +49,7 @@ public:
     float trainingProgress() const{return m_trainingProgress;}
 
     QString actionDone() const {return m_actionDone;}
+    QString processedInputPreview() const { return m_processedInputPreview; }
 
     bool isTraining() const {return m_isTraining;}
     bool isEvaluating() const {return m_isEvaluating;}
@@ -62,11 +64,13 @@ public:
     Q_INVOKABLE void trainModel();
     Q_INVOKABLE void resetModel();
     Q_INVOKABLE void evaluateModel();
+    Q_INVOKABLE void learnLastDigit(int correctDigit);
 
 signals:
     // Signal emitted when prediction updates
     void predictionChanged();
     void actionDoneChanged();
+    void processedInputPreviewChanged();
     void resetModelChanged();
 
     void modelEvaluationChanged();
@@ -92,6 +96,9 @@ private:
     bool m_isEvaluating=false;
 
     QString m_actionDone="";
+    QString m_processedInputPreview;
+    std::vector<float> m_lastInputPixels;
+    int m_learnedSampleCount = 0;
 
     QVariantList m_probabilities;
 };

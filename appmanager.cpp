@@ -4,26 +4,66 @@
 #include <QtConcurrent>
 #include <QImage>
 #include <QPainter>
+#include <QBuffer>
+#include <array>
 
 AppManager::AppManager(QObject *parent) : QObject(parent) {
     // NeuralNetwork constructor will run and load/train weights
 }
 
 void AppManager::predictFromPixels(const QList<float> &pixelBuffer) {
+    if (m_isTraining || m_isEvaluating) {
+        return;
+    }
+
     if (pixelBuffer.size() != 784) {
         std::cerr << "Error: Expected 784 pixels, got " << pixelBuffer.size() << std::endl;
         return;
     }
 
-    // 2. Run forward pass
-    m_nn.forward(std::vector<float>(pixelBuffer.begin(), pixelBuffer.end()));
+    // Average several one-pixel translations at inference time.  This matches
+    // the translation augmentation used for training and prevents a slightly
+    // off-centre canvas stroke from changing the predicted class.
+    const std::vector<float> sourcePixels(pixelBuffer.begin(), pixelBuffer.end());
+    const std::array<std::pair<int, int>, 5> offsets = {{
+        {0, 0}, {-1, 0}, {1, 0}, {0, -1}, {0, 1}
+    }};
+    std::array<float, 10> averagedProbabilities{};
+    std::vector<float> shiftedPixels(784, 0.0f);
+
+    for (const auto& [shiftX, shiftY] : offsets) {
+        if (shiftX == 0 && shiftY == 0) {
+            m_nn.forward(sourcePixels);
+        } else {
+            std::fill(shiftedPixels.begin(), shiftedPixels.end(), 0.0f);
+            for (int y = 0; y < 28; ++y) {
+                const int destinationY = y + shiftY;
+                if (destinationY < 0 || destinationY >= 28) {
+                    continue;
+                }
+                for (int x = 0; x < 28; ++x) {
+                    const int destinationX = x + shiftX;
+                    if (destinationX >= 0 && destinationX < 28) {
+                        shiftedPixels[destinationY * 28 + destinationX] = sourcePixels[y * 28 + x];
+                    }
+                }
+            }
+            m_nn.forward(shiftedPixels);
+        }
+
+        for (int digit = 0; digit < 10; ++digit) {
+            averagedProbabilities[digit] += m_nn.outputNeuron[digit];
+        }
+    }
+
+    m_lastInputPixels.assign(pixelBuffer.begin(), pixelBuffer.end());
 
     // 3. Store pairs of (probability, digit_index)
     std::vector<std::pair<float, int>> results;
     m_probabilities.clear();
 
     for (int i = 0; i < 10; ++i) {
-        float prob = m_nn.outputNeuron[i];
+        const float prob = averagedProbabilities[i] / static_cast<float>(offsets.size());
         m_probabilities.append(prob);
         results.push_back({prob, i});
     }
@@ -61,17 +101,29 @@ void AppManager::clearPrediction() {
     m_secondBestProb = 0.0f;
     m_thirdBestProb = 0.0f;
 
-    m_isTraining=false;
-    m_isEvaluating=false;
-
     m_probabilities.clear();
+    m_lastInputPixels.clear();
     emit predictionChanged();
-    emit modelEvaluationChanged();
+}
+
+void AppManager::learnLastDigit(int correctDigit) {
+    if (m_isTraining || m_isEvaluating || m_lastInputPixels.size() != 784
+        || correctDigit < 0 || correctDigit > 9) {
+        return;
+    }
+
+    m_nn.fineTune(m_lastInputPixels, correctDigit);
+    ++m_learnedSampleCount;
+    m_actionDone = QString("Learned %1 example%2 for digit %3. Add 3-5 examples for best results.")
+        .arg(m_learnedSampleCount)
+        .arg(m_learnedSampleCount == 1 ? "" : "s")
+        .arg(correctDigit);
+    emit actionDoneChanged();
 }
 
 void AppManager::trainModel(){
 
-    if (m_isTraining) {
+    if (m_isTraining || m_isEvaluating) {
         return;
     }
 
@@ -116,6 +168,10 @@ void AppManager::trainModel(){
 
 }
 void AppManager::resetModel(){
+    if (m_isTraining || m_isEvaluating) {
+        return;
+    }
+
     m_nn.getRandomWeight();
     m_isEvaluating=false;
     m_isTraining=false;
@@ -126,7 +182,7 @@ void AppManager::resetModel(){
 
 }
 void AppManager::evaluateModel(){
-    if (m_isEvaluating) {
+    if (m_isEvaluating || m_isTraining) {
         return;
     }
 
@@ -137,12 +193,13 @@ void AppManager::evaluateModel(){
 
     auto future = QtConcurrent::run([this]() {
         std::cout << ">>> Background thread started..." << std::endl;
+        float accuracy = 0.0f;
 
         try {
             if (m_nn.images.empty()) {
                 std::cerr << "CRITICAL ERROR: No training images loaded in m_nn!" << std::endl;
             } else {
-                m_modelPerformance= m_nn.evaluate();
+                accuracy = m_nn.evaluate();
             }
         } catch (const std::exception &e) {
             std::cerr << "EXCEPTION CAUGHT IN TRAIN THREAD: " << e.what() << std::endl;
@@ -150,8 +207,9 @@ void AppManager::evaluateModel(){
             std::cerr << "UNKNOWN CRASH IN TRAIN THREAD!" << std::endl;
         }
 
-        QMetaObject::invokeMethod(this, [this]() {
+        QMetaObject::invokeMethod(this, [this, accuracy]() {
             m_isEvaluating = false;
+            m_modelPerformance = accuracy;
             m_actionDone = "Model was evaluated successfully";
 
             emit modelEvaluationChanged();
@@ -168,7 +226,10 @@ void AppManager::predictFromImage(const QVariant &imageVariant) {
 
     QImage grayImg = img.convertToFormat(QImage::Format_Grayscale8);
 
-    // 1. Find the exact Bounding Box of the drawn pixels
+    // 1. Find the bounding box of white ink only.  The QML drawing guide has
+    // a grey border; treating that border as ink makes the full canvas shrink
+    // to 20x20 and leaves the actual digit far too small for MNIST.
+    constexpr uchar inkThreshold = 200;
     int minX = grayImg.width(), maxX = 0;
     int minY = grayImg.height(), maxY = 0;
     bool hasPixels = false;
@@ -176,7 +237,7 @@ void AppManager::predictFromImage(const QVariant &imageVariant) {
     for (int y = 0; y < grayImg.height(); ++y) {
         const uchar *line = grayImg.scanLine(y);
         for (int x = 0; x < grayImg.width(); ++x) {
-            if (line[x] > 10) {
+            if (line[x] > inkThreshold) {
                 if (x < minX) minX = x;
                 if (x > maxX) maxX = x;
                 if (y < minY) minY = y;
@@ -231,29 +292,26 @@ void AppManager::predictFromImage(const QVariant &imageVariant) {
     painter.drawImage(offsetX, offsetY, scaledCropped);
     painter.end();
 
-    // 5. Normalization and pixel buffer population
-    float maxVal = 0.01f;
-    for (int y = 0; y < 28; ++y) {
-        const uchar *line = mnistReady.scanLine(y);
-        for (int x = 0; x < 28; ++x) {
-            float val = line[x] / 255.0f;
-            if (val > maxVal) maxVal = val;
-        }
+    // Expose the exact 28x28 tensor image to QML.  This is deliberately shown
+    // beside the drawing canvas so a preprocessing problem is immediately
+    // visible instead of being mistaken for a classifier error.
+    QByteArray pngData;
+    QBuffer pngBuffer(&pngData);
+    if (pngBuffer.open(QIODevice::WriteOnly) && mnistReady.save(&pngBuffer, "PNG")) {
+        m_processedInputPreview = "data:image/png;base64," + QString::fromLatin1(pngData.toBase64());
+        emit processedInputPreviewChanged();
     }
 
+    // Preserve anti-aliased stroke intensities.  MNIST images and the network
+    // input both use one normalized [0, 1] value per pixel; hard thresholding
+    // here removed the useful edge information learned during training.
     QList<float> pixelBuffer;
     pixelBuffer.reserve(784);
 
     for (int y = 0; y < 28; ++y) {
         const uchar *line = mnistReady.scanLine(y);
         for (int x = 0; x < 28; ++x) {
-            float val = (line[x] / 255.0f) / maxVal;
-            if (val > 0.35f) {
-                val = 1.0f;
-            } else if (val < 0.15f) {
-                val = 0.0f;
-            }
-            pixelBuffer.append(val);
+            pixelBuffer.append(line[x] / 255.0f);
         }
     }
 

@@ -4,7 +4,7 @@ project(HandwrittenDigitRecognizer VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Quick)
+find_package(Qt6 REQUIRED COMPONENTS Quick Concurrent)
 
 qt_standard_project_setup(REQUIRES 6.10)
 
@@ -43,6 +43,16 @@ target_link_libraries(appHandwrittenDigitRecognizer
     PRIVATE Qt6::Quick
     PRIVATE Qt6::Concurrent
 )
+
+option(BUILD_TRAINING_SMOKE_TEST "Build the MNIST training smoke test" OFF)
+if (BUILD_TRAINING_SMOKE_TEST)
+    add_executable(training_smoke
+        training_smoke.cpp
+        neuralnetwork.cpp
+        datasetloader.cpp
+    )
+    target_link_libraries(training_smoke PRIVATE Qt6::Concurrent)
+endif()
 
 install(TARGETS appHandwrittenDigitRecognizer
     BUNDLE DESTINATION .

@@ -109,7 +109,6 @@ ApplicationWindow {
 
                     // Trigger prediction manually via button click
                     function triggerPrediction() {
-                        // Calculate the exact area inside the MouseArea margins
                         var captureX = mouseArea.x;
                         var captureY = mouseArea.y;
                         var captureWidth = mouseArea.width;
@@ -197,6 +196,10 @@ ApplicationWindow {
 
                         Rectangle {
                             anchors.fill: parent
+                            // This is only a writing guide.  Hide it before a
+                            // recognizer-button click so it cannot enter the
+                            // Canvas snapshot as a grey rectangular "digit".
+                            visible: mouseArea.containsMouse || mouseArea.pressed
                             color: mouseArea.containsMouse ? "#10FFFFFF" : "transparent"
                             border.color: mouseArea.containsMouse ? "#00FF00" : "#555555"
                             border.width: 2
@@ -238,6 +241,47 @@ ApplicationWindow {
                     }
                 }
 
+                // This is the exact 28x28 image sent to the CNN, enlarged
+                // without smoothing.  It lets the user verify that their
+                // drawing survived cropping, centering, and resizing.
+                Rectangle {
+                    id: modelInputPreview
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.rightMargin: 14 * scaleFactor
+                    anchors.bottomMargin: 14 * scaleFactor
+                    width: 106 * scaleFactor
+                    height: 126 * scaleFactor
+                    z: 2
+                    radius: 5
+                    color: "#dd101010"
+                    border.color: "#cccccc"
+                    border.width: 1
+                    visible: appManager.processedInputPreview !== ""
+
+                    Text {
+                        anchors.top: parent.top
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.topMargin: 5 * scaleFactor
+                        text: "CNN input"
+                        color: "white"
+                        font.pixelSize: 12 * scaleFactor
+                        font.bold: true
+                    }
+
+                    Image {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: 7 * scaleFactor
+                        width: 92 * scaleFactor
+                        height: 92 * scaleFactor
+                        source: appManager.processedInputPreview
+                        fillMode: Image.PreserveAspectFit
+                        smooth: false
+                        mipmap: false
+                    }
+                }
+
 
             }
 
@@ -272,10 +316,12 @@ ApplicationWindow {
                 }
                 Rectangle {
                     id: bestResult
-                    x: 10* scaleFactor
-                    y: 40
-                    width: 300* scaleFactor
-                    height: 300* scaleFactor
+                    anchors.left: parent.left
+                    anchors.leftMargin: 10 * scaleFactor
+                    anchors.top: parent.top
+                    anchors.topMargin: 50 * scaleFactor
+                    width: (parent.width - 40 * scaleFactor) * 0.40
+                    height: Math.min(parent.height * 0.60, width)
                     color: "#d9d9d9"
                     radius: 0
                     Text{
@@ -315,10 +361,11 @@ ApplicationWindow {
 
                 Rectangle {
                     id: secondBestResult
-                    x: 350* scaleFactor
-                    y: 40
-                    width: 250* scaleFactor
-                    height: 250* scaleFactor
+                    anchors.left: bestResult.right
+                    anchors.leftMargin: 10 * scaleFactor
+                    anchors.top: bestResult.top
+                    width: (parent.width - 40 * scaleFactor) * 0.33
+                    height: bestResult.height * 0.84
                     color: "#d9d9d9"
                     radius: 0
                     Text{
@@ -358,10 +405,12 @@ ApplicationWindow {
 
                 Rectangle {
                     id: thirdBestResult
-                    x: 640 * scaleFactor
-                    y: 40
-                    width: 200* scaleFactor
-                    height: 200* scaleFactor
+                    anchors.left: secondBestResult.right
+                    anchors.leftMargin: 10 * scaleFactor
+                    anchors.right: parent.right
+                    anchors.rightMargin: 10 * scaleFactor
+                    anchors.top: bestResult.top
+                    height: bestResult.height * 0.68
                     color: "#d9d9d9"
                     radius: 0
                     Text{
@@ -399,6 +448,7 @@ ApplicationWindow {
 
                 }
                 TableView {
+                    id: confidenceTable
                     anchors.left: parent.left
                     anchors.leftMargin: 10
                     anchors.right: parent.right
@@ -407,12 +457,13 @@ ApplicationWindow {
                     anchors.bottomMargin: 3
 
 
-                    width: 1000
-                    height: 70
+                    height: Math.max(58, 72 * scaleFactor)
 
                     columnSpacing: 1
                     rowSpacing: 1
                     clip: true
+                    columnWidthProvider: function() { return (confidenceTable.width - 10) / 11 }
+                    rowHeightProvider: function() { return (confidenceTable.height - 2) / 2 }
 
                     model: TableModel {
                         TableModelColumn { display: "label"; }
@@ -434,37 +485,47 @@ ApplicationWindow {
                     }
 
                     delegate: Rectangle {
-                        implicitWidth: 80
-                        implicitHeight: 30
-                        color: "#333333"
+                        implicitWidth: confidenceTable.columnWidthProvider(column)
+                        implicitHeight: confidenceTable.rowHeightProvider(row)
+                        color: row === 0 ? "#3b3b3b" : "#292929"
+                        border.color: "#4b4b4b"
+                        border.width: 1
 
                         Text {
                             anchors.centerIn: parent
-                            text: display
+                            text: {
+                                if (column === 0)
+                                    return row === 0 ? "DIGIT" : "CONF."
+                                if (row === 0)
+                                    return column - 1
+                                const values = appManager.probabilities
+                                const probability = values.length === 10 ? values[column - 1] : 0
+                                return (probability * 100).toFixed(1) + "%"
+                            }
                             color: "white"
-                            font.pixelSize: 12
+                            font.pixelSize: Math.max(9, Math.min(13, parent.height * 0.42))
+                            font.bold: row === 0
                         }
                     }
                 }
                 Rectangle{
                     anchors.top: parent.top
-                    anchors.topMargin: 40
+                    anchors.topMargin: 6 * scaleFactor
                     anchors.right: parent.right
-                    anchors.rightMargin: 10
-                    anchors.left: parent.left
-                    anchors.leftMargin: 900* scaleFactor
+                    anchors.rightMargin: 10 * scaleFactor
+                    width: Math.min(190 * scaleFactor, parent.width * 0.28)
                     color: "#333333"
-                    height:100* scaleFactor
+                    height:36 * scaleFactor
 
 
                     ColumnLayout {
                             anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 10
+                            anchors.margins: 4 * scaleFactor
+                            spacing: 0
                             Text {
                                 text: "Model Evaluation"
                                 color: "white"
-                                font.pixelSize: 15
+                                font.pixelSize: Math.max(9, 11 * scaleFactor)
                                 font.bold: true
                                 Layout.fillWidth: true
                                 horizontalAlignment: Text.AlignHCenter
@@ -474,11 +535,11 @@ ApplicationWindow {
 
                                 property bool isEvaluated: (appManager?.modelPerformance?? 0)>0
                                 text:isEvaluated
-                                     ? "Correct : " + appManager.modelPerformance.toFixed(3) + " %"
-                                     : "Model has not been evaluated"
+                                     ? appManager.modelPerformance.toFixed(2) + "%"
+                                     : "Not evaluated"
 
                                 color: "white"
-                                font.pixelSize: 15
+                                font.pixelSize: Math.max(9, 11 * scaleFactor)
                                 font.bold: true
                                 Layout.fillWidth: true
                                 horizontalAlignment: Text.AlignHCenter
@@ -653,17 +714,102 @@ ApplicationWindow {
                 color: "#5a5a5a"
                 radius: 10
 
-                Text {
-                    id: text2
-                    x: 18
-                    y: 16
-                    width: 1280
-                    height: 311
-                    color: "#ffffff"
-                    text: "Explain the buttons"
-                    font.pixelSize: 12
-                    minimumPointSize: 16
-                    minimumPixelSize: 17
+                readonly property bool compactCards: width < 620 * scaleFactor
+
+                Rectangle {
+                    id: teachCard
+                    anchors.left: parent.left
+                    anchors.leftMargin: 12 * scaleFactor
+                    anchors.top: parent.top
+                    anchors.topMargin: 12 * scaleFactor
+                    width: parent.compactCards ? parent.width - 24 * scaleFactor : parent.width * 0.43
+                    height: parent.compactCards ? (parent.height - 36 * scaleFactor) * 0.48
+                                                : parent.height - 24 * scaleFactor
+                    radius: 8
+                    color: "#393939"
+                    border.color: "#747474"
+                    border.width: 1
+
+                    Column {
+                    anchors.fill: parent
+                    anchors.margins: 12 * scaleFactor
+                    spacing: 7 * scaleFactor
+
+                    Text {
+                        text: "Teach your handwriting"
+                        color: "white"
+                        font.bold: true
+                        font.pixelSize: Math.max(13, 17 * scaleFactor)
+                    }
+
+                    Text {
+                        width: parent.width
+                        text: "Draw a digit, press Recognize Number, choose its correct value, then press Teach. Add 3–5 examples for digits the model confuses, such as 6 or 8."
+                        color: "#dddddd"
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: Math.max(10, 12 * scaleFactor)
+                    }
+
+                    Row {
+                        spacing: 10 * scaleFactor
+
+                        SpinBox {
+                            id: correctDigitSelector
+                            from: 0
+                            to: 9
+                            value: 6
+                            editable: true
+                            width: 72 * scaleFactor
+                            height: 34 * scaleFactor
+                        }
+
+                        Button {
+                            text: "Teach digit"
+                            width: Math.max(100, 122 * scaleFactor)
+                            height: 34 * scaleFactor
+                            font.bold: true
+                            enabled: appManager.bestPredictedDigit >= 0
+                            onClicked: appManager.learnLastDigit(correctDigitSelector.value)
+                        }
+                    }
+                    }
+                }
+
+                Rectangle {
+                    id: programInfoCard
+                    anchors.top: parent.compactCards ? teachCard.bottom : parent.top
+                    anchors.topMargin: 12 * scaleFactor
+                    anchors.left: parent.compactCards ? parent.left : teachCard.right
+                    anchors.leftMargin: 12 * scaleFactor
+                    anchors.right: parent.right
+                    anchors.rightMargin: 12 * scaleFactor
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 12 * scaleFactor
+                    radius: 8
+                    color: "#303030"
+                    border.color: "#626262"
+                    border.width: 1
+
+                    Column {
+                        anchors.fill: parent
+                        anchors.margins: 12 * scaleFactor
+                        spacing: 7 * scaleFactor
+
+                        Text {
+                            text: "About this program"
+                            color: "white"
+                            font.bold: true
+                            font.pixelSize: Math.max(13, 17 * scaleFactor)
+                        }
+
+                        Text {
+                            width: parent.width
+                            text: "This Qt/C++ application recognises handwritten digits with a convolutional neural network. It trains on MNIST, evaluates on 10,000 test images, and can learn your own writing style through the teaching card."
+                            color: "#dddddd"
+                            wrapMode: Text.WordWrap
+                            font.pixelSize: Math.max(10, 12 * scaleFactor)
+                        }
+                    }
                 }
             }
         }
