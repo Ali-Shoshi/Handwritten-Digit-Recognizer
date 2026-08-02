@@ -88,7 +88,6 @@ ApplicationWindow {
                 Canvas {
                     id: drawingCanvas
 
-                    // 1. DYNAMIC SIZING: Fill parent container or use relative anchors
                     anchors.fill: parent
                     anchors.top: parent.top
                     anchors.topMargin: 30
@@ -103,11 +102,9 @@ ApplicationWindow {
                     property var currentPath: []
                     property color strokeColor: "#FFFFFF"
                     property real currentLineWidth: 18 * scaleFactor
-                    // Store previous size to calculate scaling factors when resized
                     property real lastWidth: width
                     property real lastHeight: height
 
-                    // Trigger prediction manually via button click
                     function triggerPrediction() {
                         var captureX = mouseArea.x;
                         var captureY = mouseArea.y;
@@ -126,7 +123,6 @@ ApplicationWindow {
                         appManager.clearPrediction()
                     }
 
-                    // 2. RESIZE HANDLING: Scale stroke coordinates proportionally when screen resizes
                     onWidthChanged: rescalePaths()
                     onHeightChanged: rescalePaths()
 
@@ -140,7 +136,6 @@ ApplicationWindow {
                         var scaleX = width / lastWidth;
                         var scaleY = height / lastHeight;
 
-                        // Recalculate stored paths relative to new dimensions
                         for (var i = 0; i < paths.length; i++) {
                             for (var j = 0; j < paths[i].length; j++) {
                                 paths[i][j].x *= scaleX;
@@ -156,17 +151,14 @@ ApplicationWindow {
                     onPaint: {
                         var ctx = getContext("2d")
 
-                        // Draw background
                         ctx.fillStyle = "black"
                         ctx.fillRect(0, 0, width, height)
 
-                        // Adjust line width proportionally relative to canvas size
                         ctx.strokeStyle = "white"
                         ctx.lineWidth = Math.min(width, height) * 0.10
                         ctx.lineCap = "round"
                         ctx.lineJoin = "round"
 
-                        // Render completed paths
                         for (var i = 0; i < paths.length; i++) {
                             var p = paths[i]
                             if (p.length < 2) continue
@@ -178,7 +170,6 @@ ApplicationWindow {
                             ctx.stroke()
                         }
 
-                        // Render current active path
                         if (currentPath.length >= 2) {
                             ctx.beginPath()
                             ctx.moveTo(currentPath[0].x, currentPath[0].y)
@@ -196,9 +187,6 @@ ApplicationWindow {
 
                         Rectangle {
                             anchors.fill: parent
-                            // This is only a writing guide.  Hide it before a
-                            // recognizer-button click so it cannot enter the
-                            // Canvas snapshot as a grey rectangular "digit".
                             visible: mouseArea.containsMouse || mouseArea.pressed
                             color: mouseArea.containsMouse ? "#10FFFFFF" : "transparent"
                             border.color: mouseArea.containsMouse ? "#00FF00" : "#555555"
@@ -209,19 +197,17 @@ ApplicationWindow {
                         Rectangle {
                                 id: innerActiveRect
                                 anchors.fill: parent
-                                anchors.margins: 60 * scaleFactor // Makes it smaller than outer box
+                                anchors.margins: 60 * scaleFactor
 
-                                // Fully invisible when not writing
                                 visible: mouseArea.pressed
 
-                                color: "#20FF0000" // Light semi-transparent red fill
-                                border.color: "#FF3333" // Bright red border
+                                color: "#20FF0000"
+                                border.color: "#FF3333"
                                 border.width: 2
                                 radius: 4
                         }
 
                         onPressed: (mouse) => {
-                            // Map local MouseArea coords (mouse.x, mouse.y) to Canvas coords
                             var pt = mapToItem(drawingCanvas, mouse.x, mouse.y)
                             drawingCanvas.currentPath = [{x: pt.x, y: pt.y}]
                         }
@@ -241,9 +227,6 @@ ApplicationWindow {
                     }
                 }
 
-                // This is the exact 28x28 image sent to the CNN, enlarged
-                // without smoothing.  It lets the user verify that their
-                // drawing survived cropping, centering, and resizing.
                 Rectangle {
                     id: modelInputPreview
                     anchors.right: parent.right
@@ -326,14 +309,21 @@ ApplicationWindow {
                     radius: 0
                     Text{
                         id: bestResultValue
-                        anchors.verticalCenterOffset: -30   * scaleFactor
-                        anchors.centerIn: parent
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.bottom: bestResultProbabilityBox.top
+                        anchors.margins: 4 * scaleFactor
                         text:appManager.bestPredictedDigit>= 0
                              ? appManager.bestPredictedDigit
                              : " "
                         color:"black"
-                        font.pixelSize:270 * scaleFactor
+                        font.pixelSize: Math.max(18, parent.height * 0.9)
+                        minimumPixelSize: 14
+                        fontSizeMode: Text.Fit
                         font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
                     }
                     Rectangle {
                         id: bestResultProbabilityBox
@@ -348,11 +338,16 @@ ApplicationWindow {
                         radius: 0
                         Text{
                             id: bestResultProbability
-                            anchors.centerIn: parent
+                            anchors.fill: parent
+                            anchors.margins: 3 * scaleFactor
                             text: "Confidence: " + (appManager.bestProb * 100).toFixed(3) + "%"
                             color:"white"
-                            font.pixelSize:15 * scaleFactor
+                            font.pixelSize: Math.max(8, parent.height * 0.42)
+                            minimumPixelSize: 8
+                            fontSizeMode: Text.Fit
                             font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
                         }
 
                     }
@@ -370,14 +365,21 @@ ApplicationWindow {
                     radius: 0
                     Text{
                         id: secondBestResultValue
-                        anchors.verticalCenterOffset: -30* scaleFactor
-                        anchors.centerIn: parent
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.bottom: secondBestResultProbabilityBox.top
+                        anchors.margins: 4 * scaleFactor
                         text:appManager.secondBestPredictedDigit>= 0
                              ? appManager.secondBestPredictedDigit
                              : " "
                         color:"black"
-                        font.pixelSize:200 * scaleFactor
+                        font.pixelSize: Math.max(18, parent.height * 0.75)
+                        minimumPixelSize: 14
+                        fontSizeMode: Text.Fit
                         font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
                     }
                     Rectangle {
                         id: secondBestResultProbabilityBox
@@ -392,11 +394,16 @@ ApplicationWindow {
                         radius: 0
                         Text{
                             id: secondBestResultProbability
-                            anchors.centerIn: parent
+                            anchors.fill: parent
+                            anchors.margins: 3 * scaleFactor
                             text: "Confidence: " + (appManager.secondBestProb * 100).toFixed(3) + "%"
                             color:"white"
-                            font.pixelSize:15 * scaleFactor
+                            font.pixelSize: Math.max(8, parent.height * 0.42)
+                            minimumPixelSize: 8
+                            fontSizeMode: Text.Fit
                             font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
                         }
 
                     }
@@ -415,14 +422,21 @@ ApplicationWindow {
                     radius: 0
                     Text{
                         id: thirdBestResultValue
-                        anchors.verticalCenterOffset: -30* scaleFactor
-                        anchors.centerIn: parent
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.bottom: thirdBestResultProbabilityBox.top
+                        anchors.margins: 4 * scaleFactor
                         text:appManager.thirdBestPredictedDigit>= 0
                              ? appManager.thirdBestPredictedDigit
                              : " "
                         color:"black"
-                        font.pixelSize:150 * scaleFactor
+                        font.pixelSize: Math.max(18, parent.height * 0.72)
+                        minimumPixelSize: 14
+                        fontSizeMode: Text.Fit
                         font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
                     }
                     Rectangle {
                         id: thirdBestResultProbabilityBox
@@ -437,11 +451,16 @@ ApplicationWindow {
                         radius: 0
                         Text{
                             id: thirdBestResultProbability
-                            anchors.centerIn: parent
+                            anchors.fill: parent
+                            anchors.margins: 3 * scaleFactor
                             text: "Confidence: " + (appManager.thirdBestProb * 100).toFixed(3) + "%"
                             color:"white"
-                            font.pixelSize:15 * scaleFactor
+                            font.pixelSize: Math.max(8, parent.height * 0.42)
+                            minimumPixelSize: 8
+                            fontSizeMode: Text.Fit
                             font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
                         }
 
                     }
@@ -508,48 +527,6 @@ ApplicationWindow {
                         }
                     }
                 }
-                Rectangle{
-                    anchors.top: parent.top
-                    anchors.topMargin: 6 * scaleFactor
-                    anchors.right: parent.right
-                    anchors.rightMargin: 10 * scaleFactor
-                    width: Math.min(190 * scaleFactor, parent.width * 0.28)
-                    color: "#333333"
-                    height:36 * scaleFactor
-
-
-                    ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 4 * scaleFactor
-                            spacing: 0
-                            Text {
-                                text: "Model Evaluation"
-                                color: "white"
-                                font.pixelSize: Math.max(9, 11 * scaleFactor)
-                                font.bold: true
-                                Layout.fillWidth: true
-                                horizontalAlignment: Text.AlignHCenter
-                            }
-
-                            Text {
-
-                                property bool isEvaluated: (appManager?.modelPerformance?? 0)>0
-                                text:isEvaluated
-                                     ? appManager.modelPerformance.toFixed(2) + "%"
-                                     : "Not evaluated"
-
-                                color: "white"
-                                font.pixelSize: Math.max(9, 11 * scaleFactor)
-                                font.bold: true
-                                Layout.fillWidth: true
-                                horizontalAlignment: Text.AlignHCenter
-
-                                wrapMode: isEvaluated? Text.NoWrap : Text.WordWrap
-                                fontSizeMode: Text.Fit
-                                minimumPixelSize:8
-                            }
-                        }
-                }
             }
 
             // --- ROW 2, COL 1 (Fixed Width, Fills Remaining Height) ---
@@ -560,8 +537,160 @@ ApplicationWindow {
                 color: "#5a5a5a"
                 radius: 10
 
+                Rectangle {
+                    id: responsiveControls
+                    anchors.fill: parent
+                    color: parent.color
+                    radius: parent.radius
+                    z: 10
+
+                    MouseArea {
+                        anchors.fill: parent
+                        z: 0
+                    }
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: Math.max(5, 9 * scaleFactor)
+                        spacing: Math.max(4, 7 * scaleFactor)
+                        z: 1
+
+                        Button {
+                            id: responsiveRecognizeButton
+                            text: "Recognize Number"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Math.max(28, responsiveControls.height * 0.15)
+                            font.bold: true
+                            font.pixelSize: Math.max(10, Math.min(18, height * 0.46))
+                            palette.buttonText: "white"
+                            background: Rectangle {
+                                radius: 5
+                                color: responsiveRecognizeButton.pressed ? "#03a306"
+                                    : (responsiveRecognizeButton.hovered ? "#027d04" : "#03a306")
+                            }
+                            onClicked: drawingCanvas.triggerPrediction()
+                        }
+
+                        Button {
+                            id: responsiveClearButton
+                            text: "Clear Number"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Math.max(28, responsiveControls.height * 0.15)
+                            font.bold: true
+                            font.pixelSize: Math.max(10, Math.min(18, height * 0.46))
+                            palette.buttonText: "white"
+                            background: Rectangle {
+                                radius: 5
+                                color: responsiveClearButton.pressed ? "#db0909"
+                                    : (responsiveClearButton.hovered ? "darkred" : "#db0909")
+                            }
+                            onClicked: drawingCanvas.clear()
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Math.max(34, responsiveControls.height * 0.26)
+                            spacing: Math.max(4, 7 * scaleFactor)
+
+                            Button {
+                                id: responsiveTrainButton
+                                text: "Train Model"
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                font.bold: true
+                                font.pixelSize: Math.max(9, Math.min(17, height * 0.33))
+                                palette.buttonText: "white"
+                                background: Rectangle {
+                                    radius: 5
+                                    color: responsiveTrainButton.pressed ? "#3b3b3b"
+                                        : (responsiveTrainButton.hovered ? "#000000" : "#242424")
+                                }
+                                onClicked: appManager.trainModel()
+                            }
+
+                            Button {
+                                id: responsiveEvaluateButton
+                                text: "Evaluate Model"
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                font.bold: true
+                                font.pixelSize: Math.max(9, Math.min(17, height * 0.33))
+                                palette.buttonText: "white"
+                                background: Rectangle {
+                                    radius: 5
+                                    color: responsiveEvaluateButton.pressed ? "#3b3b3b"
+                                        : (responsiveEvaluateButton.hovered ? "#000000" : "#242424")
+                                }
+                                onClicked: appManager.evaluateModel()
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Math.max(34, responsiveControls.height * 0.26)
+                            spacing: Math.max(4, 7 * scaleFactor)
+
+                            Button {
+                                id: responsiveResetButton
+                                text: "Reset Model"
+                                Layout.fillWidth: false
+                                Layout.preferredWidth: responsiveControls.width * 0.28
+                                Layout.fillHeight: true
+                                font.bold: true
+                                font.pixelSize: Math.max(9, Math.min(17, height * 0.33))
+                                palette.buttonText: "white"
+                                background: Rectangle {
+                                    radius: 5
+                                    color: responsiveResetButton.pressed ? "#3b3b3b"
+                                        : (responsiveResetButton.hovered ? "#000000" : "#242424")
+                                }
+                                onClicked: appManager.resetModel()
+                            }
+
+                            Rectangle {
+                                id: actionStatusCard
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                radius: 5
+                                color: "#3b3b3b"
+
+                                Text {
+                                    id: actionStatusTitle
+                                    anchors.top: parent.top
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.topMargin: 3 * scaleFactor
+                                    text: "Latest action"
+                                    color: "#ffffff"
+                                    font.bold: true
+                                    font.pixelSize: Math.max(8, Math.min(13, parent.height * 0.25))
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+
+                                Text {
+                                    anchors.top: actionStatusTitle.bottom
+                                    anchors.bottom: parent.bottom
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.margins: 5 * scaleFactor
+                                    text: appManager.actionDone === "" ? "Ready" : appManager.actionDone
+                                    color: "#12ff22"
+                                    font.bold: true
+                                    font.pixelSize: Math.max(8, Math.min(15, parent.height * 0.28))
+                                    minimumPixelSize: 8
+                                    fontSizeMode: Text.Fit
+                                    wrapMode: Text.WordWrap
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Button {
                     id: recognizeButton
+                    visible: false
                     text: "Recognize Number"
                     anchors.top: parent.top
                     anchors.topMargin: 10 * scaleFactor
@@ -587,6 +716,7 @@ ApplicationWindow {
                 }
                 Button {
                     id: clearButton
+                    visible: false
                     text: "Clear Number"
                     anchors.top: parent.top
                     anchors.topMargin: 50 * scaleFactor
@@ -612,6 +742,7 @@ ApplicationWindow {
                 }
                 Button {
                     id: trainModelButton
+                    visible: false
                     text: "Train Model"
                     anchors.top: parent.top
                     anchors.topMargin: 92 * scaleFactor
@@ -637,6 +768,7 @@ ApplicationWindow {
                 }
                 Button {
                     id: resetModelButton
+                    visible: false
                     text: "Reset Model"
                     anchors.top: parent.top
                     anchors.topMargin: 160 * scaleFactor
@@ -660,6 +792,7 @@ ApplicationWindow {
                 }
                 Button {
                     id: evaluateButton
+                    visible: false
                     text: "Evaluate Model"
                     anchors.top: parent.top
                     anchors.topMargin: 92 * scaleFactor
@@ -694,7 +827,10 @@ ApplicationWindow {
                     Text {
                         text: appManager?.actionDone ?? ""
                         width: parent.width - 16 * scaleFactor
+                        height: parent.height - 16 * scaleFactor
                         anchors.centerIn: parent
+                        fontSizeMode: Text.Fit
+                        minimumPixelSize: 10
                         font.bold: true
                         font.pixelSize: 18 * scaleFactor
                         color: "#12ff22"
@@ -714,17 +850,15 @@ ApplicationWindow {
                 color: "#5a5a5a"
                 radius: 10
 
-                readonly property bool compactCards: width < 620 * scaleFactor
-
                 Rectangle {
                     id: teachCard
                     anchors.left: parent.left
                     anchors.leftMargin: 12 * scaleFactor
                     anchors.top: parent.top
                     anchors.topMargin: 12 * scaleFactor
-                    width: parent.compactCards ? parent.width - 24 * scaleFactor : parent.width * 0.43
-                    height: parent.compactCards ? (parent.height - 36 * scaleFactor) * 0.48
-                                                : parent.height - 24 * scaleFactor
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 12 * scaleFactor
+                    width: (parent.width - 36 * scaleFactor) * 0.23
                     radius: 8
                     color: "#393939"
                     border.color: "#747474"
@@ -736,13 +870,14 @@ ApplicationWindow {
                     spacing: 7 * scaleFactor
 
                     Text {
-                        text: "Teach your handwriting"
+                        text: "Teach model"
                         color: "white"
                         font.bold: true
-                        font.pixelSize: Math.max(13, 17 * scaleFactor)
+                        font.pixelSize: Math.max(13, 14 * scaleFactor)
                     }
 
                     Text {
+                        visible: false
                         width: parent.width
                         text: "Draw a digit, press Recognize Number, choose its correct value, then press Teach. Add 3–5 examples for digits the model confuses, such as 6 or 8."
                         color: "#dddddd"
@@ -750,8 +885,17 @@ ApplicationWindow {
                         font.pixelSize: Math.max(10, 12 * scaleFactor)
                     }
 
-                    Row {
-                        spacing: 10 * scaleFactor
+                    Text {
+                        width: parent.width
+                        text: "Recognize, select the correct digit, then teach it. Add 3 to 5 samples."
+                        color: "#dddddd"
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: Math.max(10, 12 * scaleFactor)
+                    }
+
+                    Column {
+                        width: parent.width
+                        spacing: 5 * scaleFactor
 
                         SpinBox {
                             id: correctDigitSelector
@@ -759,17 +903,42 @@ ApplicationWindow {
                             to: 9
                             value: 6
                             editable: true
-                            width: 72 * scaleFactor
-                            height: 34 * scaleFactor
+                            width: parent.width
+                            height: 30 * scaleFactor
                         }
 
                         Button {
                             text: "Teach digit"
-                            width: Math.max(100, 122 * scaleFactor)
-                            height: 34 * scaleFactor
+                            width: parent.width
+                            height: 30 * scaleFactor
                             font.bold: true
                             enabled: appManager.bestPredictedDigit >= 0
                             onClicked: appManager.learnLastDigit(correctDigitSelector.value)
+                        }
+                        Text {
+                            text: "Model Evaluation"
+                            color: "white"
+                            font.pixelSize: Math.max(13, 14 * scaleFactor)
+                            font.bold: true
+                            Layout.fillWidth: true
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+
+                        Text {
+
+                            property bool isEvaluated: (appManager?.modelPerformance?? 0)>0
+                            text:isEvaluated
+                                 ? appManager.modelPerformance.toFixed(2) + "%"
+                                 : "Not evaluated"
+
+                            color: "white"
+                            font.pixelSize: Math.max(9, Math.min(13, parent.height * 0.35))
+                            Layout.fillWidth: true
+                            horizontalAlignment: Text.AlignHCenter
+
+                            wrapMode: isEvaluated? Text.NoWrap : Text.WordWrap
+                            fontSizeMode: Text.Fit
+                            minimumPixelSize:8
                         }
                     }
                     }
@@ -777,9 +946,9 @@ ApplicationWindow {
 
                 Rectangle {
                     id: programInfoCard
-                    anchors.top: parent.compactCards ? teachCard.bottom : parent.top
+                    anchors.top: parent.top
                     anchors.topMargin: 12 * scaleFactor
-                    anchors.left: parent.compactCards ? parent.left : teachCard.right
+                    anchors.left: teachCard.right
                     anchors.leftMargin: 12 * scaleFactor
                     anchors.right: parent.right
                     anchors.rightMargin: 12 * scaleFactor
@@ -799,7 +968,7 @@ ApplicationWindow {
                             text: "About this program"
                             color: "white"
                             font.bold: true
-                            font.pixelSize: Math.max(13, 17 * scaleFactor)
+                            font.pixelSize: Math.max(13, 14 * scaleFactor)
                         }
 
                         Text {
@@ -822,7 +991,6 @@ ApplicationWindow {
         TapHandler {
                 gesturePolicy: TapHandler.WithinBounds
             }
-        // Hide the spinner once C++ emits modelEvaluationChanged
         Connections {
             target: appManager
             function isTrainingChanged() {
@@ -843,7 +1011,6 @@ ApplicationWindow {
             spacing: 20
             width: Math.min(parent.width * 0.6, 400 * scaleFactor)
 
-            // 1. Text Status
             Text {
                 text: appManager?.isTraining
                       ? "Training Progress: " + Math.round((appManager?.trainingProgress ?? 0) * 100) + "%"
@@ -854,14 +1021,12 @@ ApplicationWindow {
                 Layout.alignment: Qt.AlignHCenter
             }
 
-            // 2. Busy Indicator Spinner
             BusyIndicator {
                 id: busyIndicator
                 running: overlay.visible
                 Layout.alignment: Qt.AlignHCenter
             }
 
-            // 3. Progress Bar (Only visible while training)
             ProgressBar {
                 id: trainingProgressBar
                 Layout.fillWidth: true
@@ -872,7 +1037,6 @@ ApplicationWindow {
                 to: 1.0
                 value: appManager?.trainingProgress ?? 0.0
 
-                // Dark track background
                 background: Rectangle {
                     implicitWidth: 200
                     implicitHeight: 16 * scaleFactor
@@ -882,7 +1046,6 @@ ApplicationWindow {
                     border.width: 1
                 }
 
-                // Green filled progress bar
                 contentItem: Item {
                     implicitWidth: 200
                     implicitHeight: 16 * scaleFactor
@@ -891,7 +1054,7 @@ ApplicationWindow {
                         width: trainingProgressBar.visualPosition * parent.width
                         height: parent.height
                         radius: 8
-                        color: "#12ff22" // Bright green progress fill
+                        color: "#12ff22"
 
                         Behavior on width {
                             NumberAnimation { duration: 150 }
