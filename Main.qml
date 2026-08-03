@@ -90,7 +90,7 @@ ApplicationWindow {
 
                     anchors.fill: parent
                     anchors.top: parent.top
-                    anchors.topMargin: 30
+                    anchors.topMargin: 40
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 10
                     anchors.left: parent.left
@@ -973,10 +973,21 @@ ApplicationWindow {
 
                         Text {
                             width: parent.width
-                            text: "This Qt/C++ application recognises handwritten digits with a convolutional neural network. It trains on MNIST, evaluates on 10,000 test images, and can learn your own writing style through the teaching card."
                             color: "#dddddd"
                             wrapMode: Text.WordWrap
-                            font.pixelSize: Math.max(10, 12 * scaleFactor)
+                            font.pixelSize: Math.max(10, 11 * scaleFactor)
+
+                            textFormat: Text.RichText
+                            text: "This high-performance Qt/C++ app features a custom CNN built from scratch to recognize handwritten digits via MNIST. " +
+                                  "It avoids external ML frameworks by pre-allocating memory buffers to eliminate heap overhead during training. " +
+                                  "The architecture uses a convolutional layer with ReLU, max-pooling, flattening, and a 64-node hidden layer with softmax outputs. " +
+                                  "To handle handwriting variations, it uses an augmentation pipeline (affine transformations, rotations, stroke dilation) " +
+                                  "and accelerates training across multiple CPU threads via QtConcurrent. All this results in a 173,930 parameter model<br><br>" +
+                                  "• <font color='#4da6ff'><b>Train Model:</b></font> Trains on MNIST data (~60,000 images).<br>" +
+                                  "• <font color='#4da6ff'><b>Evaluate Model:</b></font> Tests accuracy on 10,000 test images.<br>" +
+                                  "• <font color='#4da6ff'><b>Reset Model:</b></font> Reinitializes CNN with random weights.<br>" +
+                                  "• <font color='#4da6ff'><b>Recognize Number:</b></font> Classifies your drawing and shows the top 3 matches.<br>" +
+                                  "• <font color='#4da6ff'><b>Clear Number:</b></font> Resets the canvas."
                         }
                     }
                 }
