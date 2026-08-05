@@ -8,6 +8,8 @@
 #include <numeric>
 #include <QtConcurrent/QtConcurrentMap>
 #include <QThread>
+#include <QDir>
+#include <QCoreApplication>
 
 NeuralNetwork::NeuralNetwork(bool loadTrainingData) {
     // Note: Dimensions like numFilters, filterSize, convOutputDim, poolOutputDim
@@ -18,12 +20,28 @@ NeuralNetwork::NeuralNetwork(bool loadTrainingData) {
         return;
     }
 
-    std::string basePath = "C:/Users/ghost/Documents/HandwrittenDigitRecognizer/Dataset/";
+    // Smart path resolution for both Debug builds (nested folders) and Release/Deployment (beside the .exe)
+    QDir dir(QCoreApplication::applicationDirPath());
+    QString basePathStr = "Dataset/";
+
+    if (dir.exists("Dataset")) {
+        basePathStr = dir.filePath("Dataset") + "/";
+    } else if (dir.exists("../Dataset")) {
+        dir.cdUp();
+        basePathStr = dir.filePath("Dataset") + "/";
+    } else if (dir.exists("../../Dataset")) {
+        dir.cdUp();
+        dir.cdUp();
+        basePathStr = dir.filePath("Dataset") + "/";
+    }
+
+    std::string basePath = basePathStr.toStdString();
+
     bool imagesLoaded = DatasetLoader::loadImages(basePath + "train-images.idx3-ubyte", images);
     bool labelsLoaded = DatasetLoader::loadLabels(basePath + "train-labels.idx1-ubyte", labels);
 
     if (!imagesLoaded || !labelsLoaded) {
-        std::cout << "CRITICAL: Failed to load dataset files!" << std::endl;
+        std::cout << "CRITICAL: Failed to load dataset files from path: " << basePath << std::endl;
         return;
     }
 }
