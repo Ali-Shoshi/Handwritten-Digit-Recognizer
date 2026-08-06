@@ -24,9 +24,18 @@ machine learning libraries.
 
 ## Features
 * Real-time digit drawing canvas.
-* Training and evaluating the Model
-* Instant prediction and recognition feedback.
-* Clean and modern Qt Quick (QML) user interface.
+* Model Control & Actions: Interactive buttons to perform primary operations, including:
+    * Recognize Number: Classifies the user's drawing and displays the top matches.
+    * Clear Number: Resets the drawing canvas.
+    * Train Model: Trains the system on MNIST data (~60,000 images).
+    * Evaluate Model: Tests accuracy on 10,000 test images.
+    * Reset Model: Reinitializes the CNN with random weights.
+* Top Recognition Results: Visual display panels showing the top matching predictions along with their confidence percentages.
+* Digit Confidence Breakdown Table: A comprehensive table listing digits from 0 to 9 alongside their individual confidence levels (CONF)
+* Teaching/Interactive Training Module: A "Teach model" feature that allows users to recognize a drawing, select the correct digit label 
+via a numeric selector, and add custom samples (3 to 5 samples)
+
+![Alt Text](Images/FirstScreenshot.png)
 
 ## Getting Started
 
