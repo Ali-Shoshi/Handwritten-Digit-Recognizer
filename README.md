@@ -4,16 +4,6 @@ A desktop application built with **Qt 6 (C++ & QML)** that recognizes handwritte
 digits using Convolutional Neural Network (CNN) with 16 filters. The application uses the Mnist datset 
 for training as well as for testing 
 
-The architecture begins with a 28 by 28 pixel input layer expecting normalized values 
-in the [0, 1] range, passing into a convolutional layer equipped with configurable 
-filters, small positive biases to prevent dead ReLUs, and ReLU activation. This is 
-followed by a 2x2 max pooling layer that feeds into a flattening layer to serialize 
-the feature maps into a 1D vector. The flattened data then flows through a dense 
-hidden layer utilizing ReLU activation and a 10-neuron output layer featuring stable 
-softmax probabilities for digit classification from 0 to 9. Finally, the network is 
-trained using gradient descent with L2 regularization, multithreaded batch processing 
-via QtConcurrent, and robust data augmentation techniques including spatial shifts, 
-rotations, scaling, and stroke dilation.
 
 ## Motivation 
 This is my second program made using Qt. For that reason, I wanted something simple 
@@ -35,7 +25,12 @@ machine learning libraries.
 * Teaching/Interactive Training Module: A "Teach model" feature that allows users to recognize a drawing, select the correct digit label 
 via a numeric selector, and add custom samples (3 to 5 samples)
 
-![Alt Text](Images/FirstScreenshot.png)
+![First Image](Images/FirstScreenshot.png)
+
+![Training](Images/TrainingScreenshot.png)
+
+![Training](Images/RecognizeNumber.png)
+
 
 ## Getting Started
 
@@ -44,6 +39,27 @@ via a numeric selector, and add custom samples (3 to 5 samples)
 * **CMake** (version 3.16 or higher)
 
 ### Building and Running
-1. Clone the repository:
-   ```bash
-   git clone [https://github.com/your-username/HandwrittenDigitRecognizer.git](https://github.com/your-username/HandwrittenDigitRecognizer.git)
+1. **Clone the repository** or open the project folder in **Qt Creator**.
+2. **Configure the project** by selecting your preferred Qt 6 kit (e.g., MinGW or MSVC) when prompted by CMake.
+3. **Build the project** by clicking the **Build** button (or pressing `Ctrl+B`).
+4. **Run the application** by clicking the **Run** button (or pressing `Ctrl+R`) to launch the user interface.
+
+ 
+
+## Architecture
+
+The project consists of three main files.
+* **AppManager** handles user inputs like drawing, training, and evaluation, processes the image data, and connects the neural network backend to the QML frontend.
+* **DatasetLoader** manages the dataset.
+* **NeuralNetwork** implements the neural network functionality.
+
+The architecture begins with a 28 by 28 pixel input layer expecting normalized values 
+in the [0, 1] range, passing into a convolutional layer equipped with configurable 
+filters, small positive biases to prevent dead ReLUs, and ReLU activation. This is 
+followed by a 2x2 max pooling layer that feeds into a flattening layer to serialize 
+the feature maps into a 1D vector. The flattened data then flows through a dense 
+hidden layer utilizing ReLU activation and a 10-neuron output layer featuring stable 
+softmax probabilities for digit classification from 0 to 9. Finally, the network is 
+trained using gradient descent with L2 regularization, multithreaded batch processing 
+via QtConcurrent, and robust data augmentation techniques including spatial shifts, 
+rotations, scaling, and stroke dilation.
