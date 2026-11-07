@@ -155,7 +155,7 @@ ApplicationWindow {
                         ctx.fillRect(0, 0, width, height)
 
                         ctx.strokeStyle = "white"
-                        ctx.lineWidth = Math.min(width, height) * 0.10
+                        ctx.lineWidth = Math.min(width, height) * 0.08
                         ctx.lineCap = "round"
                         ctx.lineJoin = "round"
 
@@ -926,7 +926,7 @@ ApplicationWindow {
 
                         Text {
 
-                            property bool isEvaluated: (appManager?.modelPerformance?? 0)>0
+                            property bool isEvaluated: (appManager?.modelPerformance ?? -1) >= 0
                             text:isEvaluated
                                  ? appManager.modelPerformance.toFixed(2) + "%"
                                  : "Not evaluated"

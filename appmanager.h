@@ -89,7 +89,7 @@ private:
     float m_secondBestProb = 0.0f;
     float m_thirdBestProb = 0.0f;
 
-    float m_modelPerformance = 0.0f ;
+    float m_modelPerformance = NeuralNetwork::EvaluationUnavailable;
     float m_trainingProgress =0.0f;
 
     bool m_isTraining=false;

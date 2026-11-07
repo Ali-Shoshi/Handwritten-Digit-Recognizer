@@ -160,8 +160,9 @@ void AppManager::trainModel(){
         QMetaObject::invokeMethod(this, [this]() {
             m_isTraining = false;
             m_actionDone = "Model was trained successfully";
-            m_modelPerformance=0;
+            m_modelPerformance = NeuralNetwork::EvaluationUnavailable;
             emit isTrainingChanged();
+            emit modelEvaluationChanged();
             emit actionDoneChanged();
         }, Qt::QueuedConnection);
     });
@@ -175,7 +176,7 @@ void AppManager::resetModel(){
     m_nn.getRandomWeight();
     m_isEvaluating=false;
     m_isTraining=false;
-    m_modelPerformance=0.0f;
+    m_modelPerformance = NeuralNetwork::EvaluationUnavailable;
     m_actionDone="Model reset successfully";
     emit actionDoneChanged();
     emit modelEvaluationChanged();
@@ -193,24 +194,26 @@ void AppManager::evaluateModel(){
 
     auto future = QtConcurrent::run([this]() {
         std::cout << ">>> Background thread started..." << std::endl;
-        float accuracy = 0.0f;
+        float accuracy = NeuralNetwork::EvaluationUnavailable;
+        QString message = "Evaluation failed. Check the MNIST test files in Dataset.";
 
         try {
-            if (m_nn.images.empty()) {
-                std::cerr << "CRITICAL ERROR: No training images loaded in m_nn!" << std::endl;
-            } else {
-                accuracy = m_nn.evaluate();
+            accuracy = m_nn.evaluate();
+            if (accuracy != NeuralNetwork::EvaluationUnavailable) {
+                message = "Model was evaluated successfully";
             }
         } catch (const std::exception &e) {
-            std::cerr << "EXCEPTION CAUGHT IN TRAIN THREAD: " << e.what() << std::endl;
+            std::cerr << "Evaluation failed: " << e.what() << std::endl;
+            message = "Evaluation failed. See the application output for details.";
         } catch (...) {
-            std::cerr << "UNKNOWN CRASH IN TRAIN THREAD!" << std::endl;
+            std::cerr << "Unexpected error during evaluation." << std::endl;
+            message = "Evaluation failed. See the application output for details.";
         }
 
-        QMetaObject::invokeMethod(this, [this, accuracy]() {
+        QMetaObject::invokeMethod(this, [this, accuracy, message]() {
             m_isEvaluating = false;
             m_modelPerformance = accuracy;
-            m_actionDone = "Model was evaluated successfully";
+            m_actionDone = message;
 
             emit modelEvaluationChanged();
             emit actionDoneChanged();
