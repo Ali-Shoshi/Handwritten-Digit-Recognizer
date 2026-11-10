@@ -54,6 +54,16 @@ if (BUILD_TRAINING_SMOKE_TEST)
     target_link_libraries(training_smoke PRIVATE Qt6::Concurrent)
 endif()
 
+option(BUILD_TEACHING_REGRESSION_TEST "Build the MNIST teaching/retention regression test" OFF)
+if (BUILD_TEACHING_REGRESSION_TEST)
+    add_executable(teaching_regression
+        teaching_regression.cpp
+        neuralnetwork.cpp
+        datasetloader.cpp
+    )
+    target_link_libraries(teaching_regression PRIVATE Qt6::Concurrent)
+endif()
+
 install(TARGETS appHandwrittenDigitRecognizer
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

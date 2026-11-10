@@ -112,12 +112,20 @@ void AppManager::learnLastDigit(int correctDigit) {
         return;
     }
 
-    m_nn.fineTune(m_lastInputPixels, correctDigit);
+    if (!m_nn.fineTune(m_lastInputPixels, correctDigit)) {
+        m_actionDone = "Teaching requires valid examples of all ten digits in the MNIST training data.";
+        emit actionDoneChanged();
+        return;
+    }
     ++m_learnedSampleCount;
-    m_actionDone = QString("Learned %1 example%2 for digit %3. Add 3-5 examples for best results.")
+    m_actionDone = QString("Saved %1 teaching example%2. Latest digit: %3. Predictions updated.")
         .arg(m_learnedSampleCount)
         .arg(m_learnedSampleCount == 1 ? "" : "s")
         .arg(correctDigit);
+    m_modelPerformance = NeuralNetwork::EvaluationUnavailable;
+    emit modelEvaluationChanged();
+    const QList<float> pixels(m_lastInputPixels.begin(), m_lastInputPixels.end());
+    predictFromPixels(pixels);
     emit actionDoneChanged();
 }
 
@@ -128,6 +136,7 @@ void AppManager::trainModel(){
     }
 
     m_isTraining = true;
+    m_learnedSampleCount = 0;
     m_isEvaluating =false;
     m_trainingProgress= 0.0f;
 
@@ -174,6 +183,8 @@ void AppManager::resetModel(){
     }
 
     m_nn.getRandomWeight();
+    m_learnedSampleCount = 0;
+    clearPrediction();
     m_isEvaluating=false;
     m_isTraining=false;
     m_modelPerformance = NeuralNetwork::EvaluationUnavailable;

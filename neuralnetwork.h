@@ -23,7 +23,7 @@ public:
     void train(ProgressCallback onProgress = nullptr);
     void forward(const std::vector<float>& inputImage);
     float evaluate();
-    void fineTune(const std::vector<float>& inputImage, int label);
+    bool fineTune(const std::vector<float>& inputImage, int label);
 
 private:
     static constexpr int InputSize = 28;
@@ -101,6 +101,18 @@ private:
     BatchStats firstRunningStats{First.filters};
     BatchStats secondRunningStats{Second.filters};
     Batch inference{1};
+
+    struct TeachingExample {
+        std::vector<float> input;
+        std::array<float, HiddenSize> hidden{};
+        std::array<float, Classes> originalProbabilities{};
+    };
+    // A small, balanced replay set and bounded correction history for this session.
+    std::array<std::vector<TeachingExample>, Classes> teachingReplay;
+    std::array<std::vector<TeachingExample>, Classes> teachingCorrections;
+    bool teachingReplayReady = false;
+    void clearTeachingState();
+    std::array<float, Classes> classifyHidden(const std::array<float, HiddenSize>& hidden) const;
 
     static float randomNumber(int inputSize);
     static void convolve(ConvShape shape, const ConvParameters& layer,

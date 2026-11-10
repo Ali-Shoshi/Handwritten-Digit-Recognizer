@@ -66,6 +66,7 @@ float NeuralNetwork::randomNumber(int inputSize) {
 }
 
 void NeuralNetwork::getRandomWeight() {
+    clearTeachingState();
     const auto initialize = [](std::vector<float>& weights, int fanIn) {
         for (float& weight : weights) {
             weight = randomNumber(fanIn);
@@ -520,35 +521,152 @@ void NeuralNetwork::augment(const std::vector<float>& inputImage, std::vector<fl
     }
 }
 
-void NeuralNetwork::fineTune(const std::vector<float>& inputImage, int label) {
-    if (inputImage.size() != InputSize * InputSize || label < 0 || label >= Classes) {
-        return;
+void NeuralNetwork::clearTeachingState() {
+    teachingReplayReady = false;
+    for (auto& examples : teachingReplay) examples.clear();
+    for (auto& examples : teachingCorrections) examples.clear();
+}
+
+std::array<float, NeuralNetwork::Classes> NeuralNetwork::classifyHidden(
+    const std::array<float, HiddenSize>& hidden) const {
+    auto probabilities = parameters.outputBias;
+    for (int j = 0; j < HiddenSize; ++j)
+        for (int k = 0; k < Classes; ++k)
+            probabilities[k] += hidden[j] * parameters.outputWeights[j * Classes + k];
+    const float maximum = *std::max_element(probabilities.begin(), probabilities.end());
+    float total = 0.0f;
+    for (float& p : probabilities) { p = std::exp(p - maximum); total += p; }
+    for (float& p : probabilities) p /= total;
+    return probabilities;
+}
+
+bool NeuralNetwork::fineTune(const std::vector<float>& inputImage, int label) {
+    const auto validImage = [](const std::vector<float>& pixels) {
+        return pixels.size() == InputSize * InputSize
+            && std::all_of(pixels.begin(), pixels.end(), [](float p) {
+                return std::isfinite(p) && p >= 0.0f && p <= 1.0f;
+            });
+    };
+    if (!validImage(inputImage) || label < 0 || label >= Classes
+        || !std::isfinite(alpha) || alpha <= 0.0f
+        || images.empty() || images.size() != labels.size()) return false;
+
+    if (!teachingReplayReady) {
+        // Cache frozen features and the model's original predictions for all ten
+        // digits. Soft targets preserve what the trained classifier already knows.
+        constexpr std::size_t perClass = 48;
+        clearTeachingState();
+        for (std::size_t i = 0; i < images.size(); ++i) {
+            const int digit = labels[i];
+            if (digit < 0 || digit >= Classes || teachingReplay[digit].size() >= perClass
+                || !validImage(images[i])) continue;
+            forward(images[i]);
+            TeachingExample example;
+            example.hidden = inference.samples.front().hidden;
+            std::copy(outputNeuron.begin(), outputNeuron.end(), example.originalProbabilities.begin());
+            teachingReplay[digit].push_back(std::move(example));
+            if (std::all_of(teachingReplay.begin(), teachingReplay.end(), [](const auto& examples) {
+                return examples.size() >= perClass;
+            })) break;
+        }
+        // Refuse single-class adaptation when a balanced replay set is unavailable.
+        if (std::any_of(teachingReplay.begin(), teachingReplay.end(), [](const auto& examples) {
+            return examples.size() < 2;
+        })) { clearTeachingState(); return false; }
+        teachingReplayReady = true;
     }
 
-    // Keep population statistics from MNIST when adapting to one labeled drawing.
-    constexpr int variations = 24;
-    std::vector<Batch> batches;
-    batches.emplace_back(SamplesPerWorker);
-    auto& batch = batches.front();
-    for (int start = 0; start < variations; start += SamplesPerWorker) {
-        batch.count = std::min(SamplesPerWorker, variations - start);
-        for (int i = 0; i < batch.count; ++i) {
-            const unsigned int seed = static_cast<unsigned int>((start + i + 1) * 747796405u)
-                + static_cast<unsigned int>(label * 2891336453u);
-            const int shiftX = static_cast<int>(seed % 3u) - 1;
-            const int shiftY = static_cast<int>((seed / 3u) % 3u) - 1;
-            const float angle = static_cast<float>((seed / 9u) % 13u) - 6.0f;
-            const float scale = 0.95f + 0.025f * static_cast<float>((seed / 117u) % 5u);
-            const bool boldenStroke = ((seed / 585u) % 3u) == 0u;
-            auto& sample = batch.samples[i];
-            sample.label = label;
-            augment(inputImage, sample.input, batch.augmentationScratch,
-                    shiftX, shiftY, angle, scale, boldenStroke);
+    forward(inputImage);
+    TeachingExample correction;
+    correction.input = inputImage;
+    correction.hidden = inference.samples.front().hidden;
+    std::copy(outputNeuron.begin(), outputNeuron.end(), correction.originalProbabilities.begin());
+    // Repeated clicks must not multiply one drawing's weight. A relabeled drawing
+    // replaces its old label, and memory remains bounded to eight drawings/class.
+    for (auto& examples : teachingCorrections)
+        examples.erase(std::remove_if(examples.begin(), examples.end(), [&](const auto& example) {
+            return example.input == inputImage;
+        }), examples.end());
+    auto& corrections = teachingCorrections[label];
+    if (corrections.size() == 8) corrections.erase(corrections.begin());
+    corrections.push_back(std::move(correction));
+
+    // Only adapt the final classifier. Convolution, hidden features and BatchNorm
+    // statistics stay fixed, so one drawing cannot rewrite shared digit features.
+    constexpr int steps = 32;
+    const float learningRate = std::min(alpha * 10.0f, 0.01f);
+    for (int step = 0; step < steps; ++step) {
+        std::array<float, HiddenSize * Classes> weightGradient{};
+        std::array<float, Classes> biasGradient{};
+        const auto accumulate = [&](const TeachingExample& example,
+                                    std::array<float, Classes> target, float weight) {
+            auto probabilities = classifyHidden(example.hidden);
+            for (int k = 0; k < Classes; ++k) {
+                const float delta = weight * (probabilities[k] - target[k]);
+                biasGradient[k] += delta;
+                for (int j = 0; j < HiddenSize; ++j)
+                    weightGradient[j * Classes + k] += example.hidden[j] * delta;
+            }
+        };
+        for (int digit = 0; digit < Classes; ++digit) {
+            const auto& replay = teachingReplay[digit];
+            const auto& taught = teachingCorrections[digit];
+            const float replayWeight = (taught.empty() ? 1.0f : 0.5f) / Classes / replay.size();
+            for (const auto& example : replay)
+                accumulate(example, example.originalProbabilities, replayWeight);
+            std::array<float, Classes> target{}; target[digit] = 1.0f;
+            for (const auto& example : taught)
+                accumulate(example, example.input == inputImage ? target : example.originalProbabilities,
+                           0.5f / Classes / taught.size());
         }
-        forwardBatch(batch, false);
-        backwardBatch(batch, false);
-        applyUpdates(batches, 1, false);
+        float squaredNorm = 0.0f;
+        for (float value : weightGradient) squaredNorm += value * value;
+        for (float value : biasGradient) squaredNorm += value * value;
+        if (!std::isfinite(squaredNorm)) break;
+        float scale = learningRate * std::min(1.0f, 5.0f / std::max(std::sqrt(squaredNorm), 1e-8f));
+        const auto previousWeights = parameters.outputWeights;
+        const auto previousBias = parameters.outputBias;
+        // Compare against the pre-teaching reference, not just the previous click:
+        // this also bounds cumulative drift after repeated corrections. Backtrack
+        // instead of discarding a useful smaller step at the retention boundary.
+        bool retainUpdate = false;
+        for (int attempt = 0; attempt < 10 && !retainUpdate; ++attempt, scale *= 0.5f) {
+            for (std::size_t j = 0; j < weightGradient.size(); ++j)
+                parameters.outputWeights[j] = previousWeights[j] - scale * weightGradient[j];
+            for (int k = 0; k < Classes; ++k)
+                parameters.outputBias[k] = previousBias[k] - scale * biasGradient[k];
+            retainUpdate = true;
+            for (const auto& replay : teachingReplay) {
+                float divergence = 0.0f;
+                int changedPredictions = 0;
+                for (const auto& example : replay) {
+                    const auto p = classifyHidden(example.hidden);
+                    const auto& q = example.originalProbabilities;
+                    if (std::any_of(p.begin(), p.end(), [](float value) { return !std::isfinite(value); })) {
+                        retainUpdate = false; break;
+                    }
+                    changedPredictions += std::max_element(p.begin(), p.end()) - p.begin()
+                        != std::max_element(q.begin(), q.end()) - q.begin();
+                    for (int k = 0; k < Classes; ++k)
+                        if (q[k] > 0.0f) divergence += q[k] * std::log(q[k] / std::max(p[k], 1e-20f));
+                }
+                if (!retainUpdate || divergence / replay.size() > 0.03f
+                    || changedPredictions > std::max(1, static_cast<int>(replay.size()) / 20)) {
+                    retainUpdate = false; break;
+                }
+            }
+        }
+        if (!retainUpdate) {
+            parameters.outputWeights = previousWeights;
+            parameters.outputBias = previousBias;
+            break;
+        }
     }
+    forward(inputImage);
+    // Preserve the achieved correction on later clicks, rather than continually
+    // pushing every previously taught example toward 100% confidence.
+    std::copy(outputNeuron.begin(), outputNeuron.end(), corrections.back().originalProbabilities.begin());
+    return true;
 }
 
 void NeuralNetwork::train(ProgressCallback onProgress) {
@@ -562,6 +680,7 @@ void NeuralNetwork::train(ProgressCallback onProgress) {
         return;
     }
 
+    clearTeachingState();
     const int workerCount = std::clamp(QThread::idealThreadCount() - 1, 1, 8);
     std::cout << "Training with " << workerCount << " worker threads." << std::endl;
     std::vector<Batch> batches;
